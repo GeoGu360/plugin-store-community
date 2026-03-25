@@ -59,9 +59,10 @@ jobs:
           fi
 
           # Parse all build fields at once
-          python3 << 'PYEOF'
+          YAML_FILE="$YAML_FILE" python3 << 'PYEOF'
           import yaml, os
-          with open("${YAML_FILE}") as f:
+          yaml_file = os.environ["YAML_FILE"]
+          with open(yaml_file) as f:
               data = yaml.safe_load(f)
           build = data.get("build")
           out = os.environ.get("GITHUB_OUTPUT", "/dev/null")

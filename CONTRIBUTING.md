@@ -153,6 +153,18 @@ plugin-store install my-awesome-plugin
 
 If your update changes `permissions`, it will require full human review.
 
+## Submitting Plugins with Source Code (MCP/Binary)
+
+If you are a **Verified Third Party** developer and want to include an MCP server or binary:
+
+1. Keep your source code in your own GitHub repo
+2. Add a `build` section to `plugin.yaml` with `source_repo` and `source_commit`
+3. You MUST also include a SKILL.md — **Skill is the entry point for everything**
+
+The SKILL.md is the orchestrator: it tells the AI agent when to use onchainos commands, when to call your MCP tools, and when to run your binary. Without a Skill, the AI agent doesn't know your plugin exists.
+
+For full details, see the [Plugin Development Guide, Section 13](./docs/PLUGIN_DEVELOPMENT_GUIDE.md#13-submitting-plugins-with-source-code-mcpbinary).
+
 ## Getting Help
 
 - Open an [issue](https://github.com/yz06276/plugin-store-community/issues)

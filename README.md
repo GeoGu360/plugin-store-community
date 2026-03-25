@@ -28,6 +28,18 @@ Community-submitted plugins for the [Plugin Store](https://github.com/yz06276/pl
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full guide.
 
+## Core Concept: Skill is the Entry Point
+
+Every plugin must include a SKILL.md. It is the **single entry point** that tells the AI agent how to use your plugin — whether it's a pure Skill, an MCP server, or a binary. The Skill orchestrates onchainos CLI commands and your custom tools.
+
+```
+SKILL.md (orchestrator)
+  ├── onchainos CLI commands (platform capabilities)
+  └── Your MCP tools / binary commands (your capabilities)
+```
+
+Verified Third Party developers can also include MCP servers or binaries by submitting source code — we compile it. See the [development guide](./docs/PLUGIN_DEVELOPMENT_GUIDE.md) for details.
+
 ## Directory Structure
 
 ```
@@ -36,7 +48,7 @@ submissions/
     plugin.yaml              # Plugin manifest (required)
     skills/
       my-plugin/
-        SKILL.md             # Skill definition (required)
+        SKILL.md             # Skill definition (required) — THE entry point
         references/          # Optional reference docs
     LICENSE                  # Required
     CHANGELOG.md             # Recommended

@@ -510,6 +510,8 @@ onchainos market price --address <TOKEN_ADDRESS> --chain solana
 
 ### 包含 build 配置的 plugin.yaml
 
+你的源码保留在你自己的 GitHub 仓库中。你提供仓库地址和一个锁定的 commit SHA — 我们的 CI 在这个精确的提交上克隆、编译、发布。commit SHA 就是内容指纹：相同的 SHA = 相同的代码，不可篡改。
+
 ```yaml
 schema_version: 2
 name: my-mcp-server
@@ -533,7 +535,9 @@ components:
 
 build:
   lang: rust                          # rust | go | typescript | node | python
-  source_dir: src/                    # 源码目录
+  source_repo: "your-username/my-mcp-server"  # 你的 GitHub 源码仓库
+  source_commit: "abc123def456..."    # 完整的 40 位 commit SHA（锁定版本）
+  source_dir: "."                     # 仓库内的路径（默认：根目录）
   binary_name: my-mcp-server         # 编译产物名
   # main: src/index.ts               # TypeScript/Python 需要指定
   # npm_scope: "@plugin-store"       # Node.js 需要指定
@@ -548,22 +552,34 @@ permissions:
   chains: [ethereum]
 ```
 
+### 如何获取 commit SHA
+
+```bash
+# 在你的源码仓库中，推送代码后执行：
+git rev-parse HEAD
+# 输出：342756ee25405b5ec5b375a37c1b36710d5b9cd6
+# 把这个完整的 40 位字符串复制到 build.source_commit
+```
+
 ### 目录结构
 
+源码在你自己的仓库中。你只需要把元数据 + SKILL 提交到 community 仓库：
+
 ```
-submissions/my-mcp-server/
-  plugin.yaml                         # 包含 build 配置
+submissions/my-mcp-server/            ← 在 community 仓库中（很小，约 20KB）
+  plugin.yaml                         # 包含 build 配置，指向你的仓库
   skills/my-mcp-server/
     SKILL.md                          # AI Agent 的入口
     references/
-  src/                                # 你的源码
-    Cargo.toml                        # （Rust 示例）
-    src/
-      main.rs
-      lib.rs
   LICENSE
   CHANGELOG.md
   README.md
+
+your-username/my-mcp-server           ← 你自己的 GitHub 仓库（源码）
+  Cargo.toml                          # （Rust 示例）
+  src/
+    main.rs
+    lib.rs
 ```
 
 ### 支持的语言
@@ -631,7 +647,7 @@ submissions/my-mcp-server/
 A: 不可以。所有链上操作必须通过 onchainos CLI。如果你需要 onchainos 尚未提供的能力，请在 onchainos 仓库提交 feature request。
 
 **Q: 我可以包含二进制文件或 MCP Server 吗？**
-A: 社区插件目前不允许。等平台支持源码审核和编译后，此功能将开放。
+A: 可以，前提是你是 Verified Third Party 或 OKX Official 开发者。你在自己的 GitHub 仓库中提交源码，我们的 CI 负责编译。在 plugin.yaml 中添加 `build` 配置，包含 `source_repo` 和 `source_commit`。详见第 13 节。Community Developer 只能提交纯 Skill 插件。
 
 **Q: 审核需要多长时间？**
 A: 自动化检查约 5 分钟完成。人工审核通常需要 1-3 个工作日。
@@ -647,3 +663,21 @@ A: 累计 5 次以上审核通过的插件提交后，可以申请 Verified Publ
 
 **Q: 本地 `plugin-store lint` 通过了，但 GitHub 检查失败？**
 A: 确保你使用的是最新版本的 plugin-store CLI。同时确保 PR 只修改了 `submissions/你的插件名/` 目录下的文件。
+
+**Q: 错误 E122 "source_repo is not valid" 是什么意思？**
+A: `build.source_repo` 必须是 `owner/repo` 格式（如 `your-username/my-server`）。不要包含 `https://github.com/` 或 `.git`。
+
+**Q: 错误 E123 "must be a full 40-character hex SHA" 是什么意思？**
+A: `build.source_commit` 必须是完整的 40 位提交哈希，不能是短 SHA 或分支名。在你的源码仓库中运行 `git rev-parse HEAD` 获取完整哈希。
+
+**Q: 错误 E120 "must also include a Skill component" 是什么意思？**
+A: 每个包含 `build` 配置的插件都必须有 SKILL.md。Skill 是入口 — 它告诉 AI Agent 如何使用你的 MCP Server 或二进制。
+
+**Q: 错误 E130 "pre-compiled binary file is not allowed" 是什么意思？**
+A: 你在提交目录中包含了编译好的文件（.exe、.dll、.so、.wasm 等）。请删除它 — 我们从你的源码编译，你不需要提交二进制。
+
+**Q: 错误 E110/E111 "requires a build section" 是什么意思？**
+A: 你声明了 MCP 或 Binary 组件但没有 `build` 配置。我们需要知道你的源码在哪里才能编译。添加 `build.lang`、`build.source_repo` 和 `build.source_commit`。
+
+**Q: CI 中编译失败了，但我本地可以编译。为什么？**
+A: 我们的 CI 在 Ubuntu Linux 上编译。确保你的代码能在 Linux 上编译，而不仅仅是 macOS/Windows。查看 GitHub Actions 运行日志获取具体错误信息。

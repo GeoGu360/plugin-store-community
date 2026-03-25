@@ -510,6 +510,8 @@ You never submit binaries. We never modify your source code.
 
 ### plugin.yaml with build config
 
+Your source code stays in your own GitHub repo. You provide the repo URL and a pinned commit SHA — our CI clones at that exact commit, compiles, and publishes. The commit SHA is the content fingerprint: same SHA = same code, guaranteed.
+
 ```yaml
 schema_version: 2
 name: my-mcp-server
@@ -533,7 +535,9 @@ components:
 
 build:
   lang: rust                          # rust | go | typescript | node | python
-  source_dir: src/                    # Where your source code lives
+  source_repo: "your-username/my-mcp-server"  # Your GitHub repo with source code
+  source_commit: "abc123def456..."    # Full 40-char commit SHA (pinned)
+  source_dir: "."                     # Path within repo (default: root)
   binary_name: my-mcp-server         # Name of the compiled output
   # main: src/index.ts               # Required for typescript/python
   # npm_scope: "@plugin-store"       # Required for node
@@ -548,22 +552,34 @@ permissions:
   chains: [ethereum]
 ```
 
+### How to get the commit SHA
+
+```bash
+# In your source code repo, after pushing your code:
+git rev-parse HEAD
+# Output: 342756ee25405b5ec5b375a37c1b36710d5b9cd6
+# Copy this full 40-character string into build.source_commit
+```
+
 ### Directory Structure
 
+Source code lives in your own repo. You only submit metadata + SKILL to the community repo:
+
 ```
-submissions/my-mcp-server/
-  plugin.yaml                         # With build section
+submissions/my-mcp-server/            ← In community repo (small, ~20KB)
+  plugin.yaml                         # With build section pointing to your repo
   skills/my-mcp-server/
     SKILL.md                          # The AI agent's entry point
     references/
-  src/                                # Your source code
-    Cargo.toml                        # (Rust example)
-    src/
-      main.rs
-      lib.rs
   LICENSE
   CHANGELOG.md
   README.md
+
+your-username/my-mcp-server           ← Your own GitHub repo (source code)
+  Cargo.toml                          # (Rust example)
+  src/
+    main.rs
+    lib.rs
 ```
 
 ### Supported Languages
@@ -631,7 +647,7 @@ For the full subcommand list, run `onchainos <command> --help` or see the [oncha
 A: No. All on-chain operations must go through onchainos CLI. If you need a capability that onchainos doesn't provide, open a feature request in the onchainos repo.
 
 **Q: Can I include a binary or MCP server?**
-A: Not yet for community plugins. This capability will be available once we support platform-managed source auditing and compilation.
+A: Yes, if you are a Verified Third Party or OKX Official developer. You submit source code in your own GitHub repo, and our CI compiles it. Add a `build` section to your plugin.yaml with `source_repo` and `source_commit`. See Section 13 for details. Community Developers can only submit Skill-only plugins.
 
 **Q: How long does the review take?**
 A: Automated checks complete in ~5 minutes. Human review typically takes 1-3 business days.
@@ -647,3 +663,21 @@ A: After 5+ approved plugin submissions, you can apply for Verified Publisher st
 
 **Q: My `plugin-store lint` passes but the GitHub check fails. Why?**
 A: Make sure you're running the latest version of the plugin-store CLI. Also ensure your PR only modifies files within `submissions/your-plugin-name/`.
+
+**Q: What does error E122 "source_repo is not valid" mean?**
+A: `build.source_repo` must be in `owner/repo` format (e.g. `your-username/my-server`). Don't include `https://github.com/` or `.git`.
+
+**Q: What does error E123 "must be a full 40-character hex SHA" mean?**
+A: `build.source_commit` must be the full commit hash, not a short SHA or branch name. Run `git rev-parse HEAD` in your source repo to get the full 40-character hash.
+
+**Q: What does error E120 "must also include a Skill component" mean?**
+A: Every plugin with a `build` section must also have a SKILL.md. The Skill is the entry point — it tells the AI agent how to use your MCP server or binary.
+
+**Q: What does error E130 "pre-compiled binary file is not allowed" mean?**
+A: You submitted a compiled file (.exe, .dll, .so, .wasm, etc.) in your submission directory. Remove it — we compile from your source code, you don't submit binaries.
+
+**Q: What does error E110/E111 "requires a build section" mean?**
+A: You declared an MCP or Binary component but didn't include a `build` section. We need to know where your source code is so we can compile it. Add `build.lang`, `build.source_repo`, and `build.source_commit`.
+
+**Q: The build failed in CI but I can compile locally. Why?**
+A: Our CI compiles on Ubuntu Linux. Ensure your code builds on Linux, not just macOS/Windows. Check the build logs in the GitHub Actions run for specific errors.

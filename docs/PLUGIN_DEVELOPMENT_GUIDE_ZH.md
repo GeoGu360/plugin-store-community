@@ -37,7 +37,7 @@ plugin 有一个必须的核心：**SKILL.md** — 一个 Markdown 文档，教 
 ────────────────────────────────────────────
  SKILL.md → 指挥 AI → 调用 onchainos CLI
 
-类型 B：Skill + MCP/Binary（仅 Verified Third Party）
+类型 B：Skill + Binary（任何开发者，源码由我们的 CI 编译）
 ────────────────────────────────────────────
  SKILL.md → 指挥 AI → 调用 onchainos CLI
  + 调用你的 MCP 工具
@@ -50,11 +50,10 @@ plugin 有一个必须的核心：**SKILL.md** — 一个 Markdown 文档，教 
 
 在开始之前选择你的路径：
 
-| 我想要... | 类型 | 需要的信任等级 |
-|-----------|------|--------------|
-| 用 onchainos 命令创建策略 | 纯 Skill | Community Developer |
-| 构建自定义 MCP Server + onchainos | Skill + MCP | Verified Third Party |
-| 提供一个 CLI 工具 + Skill | Skill + Binary | Verified Third Party |
+| 我想要... | 类型 |
+|-----------|------|
+| 用 onchainos 命令创建策略 | 纯 Skill |
+| 提供一个 CLI 工具 + Skill | Skill + Binary（提交源码，我们编译） |
 
 ---
 
@@ -144,7 +143,7 @@ extra:
  risk_level: low # low | medium | high
 ```
 
-### 4B. Skill + MCP Server 示例（Verified Third Party）
+### 4B. Skill + Binary 示例（含源码编译）
 
 如果你的 plugin 包含 MCP Server 或二进制，需要添加 `build` 配置。源码在你自己的 GitHub 仓库中 — 我们来编译。
 
@@ -564,13 +563,12 @@ Phase 3：AI 代码审查（Claude）
 - 包含 prompt injection 模式
 - 超过文件大小限制（单文件 100KB，总计 1MB）
 
-### 信任等级
+### 所有开发者可以提交的内容
 
-| 等级 | 谁 | 能力范围 |
-|------|-----|---------|
-| Community Developer（社区开发者） | 首次/未验证贡献者 | 仅 Skill |
-| Verified Third Party（认证第三方） | 知名 DApp 团队或通过验证的社区开发者 | Skill + MCP/Binary |
-| OKX Official（OKX 官方） | OKX 团队内部开发 | 完整能力 |
+| 组件 | 方式 |
+|------|------|
+| Skill (SKILL.md) | 放入 submissions/ 目录 |
+| Binary（源码） | 源码放在你自己的 GitHub 仓库，在 plugin.yaml 中添加 `build` 配置，我们编译 |
 
 ---
 
@@ -613,7 +611,7 @@ onchainos market price --address <TOKEN_ADDRESS> --chain solana
 
 ### 谁可以提交源码？
 
-仅 Verified Third Party（认证第三方）和 OKX Official（官方）plugin。Community Developer（社区开发者）只能提交纯 Skill plugin。
+任何开发者都可以提交 Binary 源码。将源码放在你自己的 GitHub 仓库中，在 plugin.yaml 中添加 `build` 配置，我们的 CI 会编译。
 
 ### 运作方式
 
@@ -757,7 +755,7 @@ your-username/my-mcp-server ← 你自己的 GitHub 仓库（源码）
 A: 不可以。所有链上操作必须通过 onchainos CLI。如果你需要 onchainos 尚未提供的能力，请在 onchainos 仓库提交 feature request。
 
 **Q: 我可以包含二进制文件或 MCP Server 吗？**
-A: 可以，前提是你是 Verified Third Party 或 OKX Official 开发者。你在自己的 GitHub 仓库中提交源码，我们的 CI 负责编译。在 plugin.yaml 中添加 `build` 配置，包含 `source_repo` 和 `source_commit`。详见第 13 节。Community Developer 只能提交纯 Skill plugin。
+A: 可以。任何开发者都可以提交 Binary 源码。将源码放在你自己的 GitHub 仓库中，在 plugin.yaml 中添加 `build` 配置，包含 `source_repo` 和 `source_commit`。我们的 CI 负责编译。详见第 13 节。
 
 **Q: 审核需要多长时间？**
 A: 自动化检查约 5 分钟完成。人工审核通常需要 1-3 个工作日。

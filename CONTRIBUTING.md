@@ -159,7 +159,7 @@ If your update changes `permissions`, it will require full human review.
 
 ## Submitting Plugins with Source Code (MCP/Binary)
 
-If you are a **Verified Third Party** developer and want to include an MCP server or binary:
+If you want to include a binary alongside your Skill:
 
 1. Keep your source code in your own GitHub repo
 2. Add a `build` section to `plugin.yaml` with `source_repo` and `source_commit`

@@ -38,7 +38,7 @@ SKILL.md (orchestrator)
   └── Your MCP tools / binary commands (your capabilities)
 ```
 
-Verified Third Party developers can also include MCP servers or binaries by submitting source code — we compile it. See the [development guide](./docs/PLUGIN_DEVELOPMENT_GUIDE.md) for details.
+Any developer can also include binaries by submitting source code — we compile it. See the [development guide](./docs/PLUGIN_DEVELOPMENT_GUIDE.md) for details.
 
 ## Directory Structure
 
@@ -67,13 +67,12 @@ PR opened
   → Phase 7: Auto-publish to registry
 ```
 
-## Trust Levels
+## What You Can Submit
 
-| Level | Label | Who |
-|-------|-------|-----|
-| OKX Official | 🟢 | OKX team — internal development |
-| Verified Third Party | 🔵 | Known DApp teams or verified community developers |
-| Community Developer | 🟡 | First-time / unverified community contributors |
+| Component | Availability | How |
+|-----------|-------------|-----|
+| Skill (SKILL.md) | All developers | Include in submissions/ directory |
+| Binary (source code) | All developers | Add `build` section to plugin.yaml, we compile |
 
 ## License
 

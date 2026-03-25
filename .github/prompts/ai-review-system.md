@@ -19,7 +19,7 @@ Produce a comprehensive review report in EXACTLY this markdown format. Do not ad
 | Category | [category] |
 | Author | [author name] ([author github]) |
 | License | [license] |
-| Trust Level | [OKX Official / Verified Third Party / Community Developer] |
+| Has Binary | [Yes (with build config) / No (Skill only)] |
 | Risk Level | [from extra.risk_level or your assessment] |
 
 **Summary**: [2-3 sentence description of what this plugin does, in plain language]

@@ -37,7 +37,7 @@ Type A: Skill-Only (most common, any developer)
 ────────────────────────────────────────────────
   SKILL.md → instructs AI → calls onchainos CLI
 
-Type B: Skill + MCP/Binary (Verified Third Party only)
+Type B: Skill + Binary (any developer, source code compiled by our CI)
 ────────────────────────────────────────────────
   SKILL.md → instructs AI → calls onchainos CLI
                            + calls your MCP tools
@@ -50,11 +50,10 @@ Type B: Skill + MCP/Binary (Verified Third Party only)
 
 Choose your path before starting:
 
-| I want to... | Type | Trust Level Required |
-|---------------|------|---------------------|
-| Create a strategy using onchainos commands | Skill-Only | Community Developer |
-| Build a custom MCP server with onchainos | Skill + MCP | Verified Third Party |
-| Ship a CLI tool alongside a Skill | Skill + Binary | Verified Third Party |
+| I want to... | Type |
+|---------------|------|
+| Create a strategy using onchainos commands | Skill-Only |
+| Ship a CLI tool alongside a Skill | Skill + Binary (submit source code, we compile) |
 
 ---
 
@@ -144,7 +143,7 @@ extra:
   risk_level: low                    # low | medium | high
 ```
 
-### 4B. Skill + MCP Server Example (Verified Third Party)
+### 4B. Skill + Binary Example (with source code compilation)
 
 If your plugin includes an MCP server or binary, you need a `build` section. Your source code stays in your own GitHub repo — we compile it.
 
@@ -564,13 +563,12 @@ If your update changes `chains` or `api_calls`, the review will be more thorough
 - Include prompt injection patterns
 - Exceed file size limits (100KB per file, 1MB total)
 
-### Trust Levels
+### What Any Developer Can Submit
 
-| Level | Who | Capabilities |
-|-------|-----|-------------|
-| Community Developer | First-time / unverified contributors | Skill only |
-| Verified Third Party | Known DApp teams or verified community developers | Skill + MCP/Binary |
-| OKX Official | OKX team — internal development | Full capabilities |
+| Component | How |
+|-----------|-----|
+| Skill (SKILL.md) | Include in submissions/ directory |
+| Binary | Submit source code in your GitHub repo, we compile it (requires `build` section) |
 
 ---
 
@@ -613,7 +611,7 @@ onchainos market price --address <TOKEN_ADDRESS> --chain solana
 
 ### Who Can Submit Source Code?
 
-Verified Third Party and OKX Official plugins only. Community Developer plugins are limited to Skill-only submissions.
+Any developer can submit source code for binary compilation. Submit your source code in your own GitHub repo, add a `build` section to plugin.yaml, and our CI will compile it.
 
 ### How It Works
 
@@ -757,7 +755,7 @@ For the full subcommand list, run `onchainos <command> --help` or see the [oncha
 A: No. All on-chain operations must go through onchainos CLI. If you need a capability that onchainos doesn't provide, open a feature request in the onchainos repo.
 
 **Q: Can I include a binary or MCP server?**
-A: Yes, if you are a Verified Third Party or OKX Official developer. You submit source code in your own GitHub repo, and our CI compiles it. Add a `build` section to your plugin.yaml with `source_repo` and `source_commit`. See Section 13 for details. Community Developers can only submit Skill-only plugins.
+A: Yes. Any developer can submit binary source code. Keep your source in your own GitHub repo and add a `build` section to plugin.yaml with `source_repo` and `source_commit`. Our CI compiles it. See Section 13 for details.
 
 **Q: How long does the review take?**
 A: Automated checks complete in ~5 minutes. Human review typically takes 1-3 business days.

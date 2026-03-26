@@ -8,7 +8,7 @@
 
 1. [What is a Plugin?](#1-what-is-a-plugin)
 2. [Before You Start](#2-before-you-start)
-3. [Step 1: Scaffold Your Plugin](#3-step-1-scaffold-your-plugin)
+3. [Step 1: Clone and Scaffold Your Plugin](#3-step-1-scaffold-your-plugin)
 4. [Step 2: Write plugin.yaml](#4-step-2-write-pluginyaml)
 5. [Step 3: Write SKILL.md](#5-step-3-write-skillmd)
 6. [Step 4: Declare API Calls](#6-step-4-declare-api-calls)
@@ -101,20 +101,24 @@ Choose your path before starting:
 
 ---
 
-## 3. Step 1: Scaffold Your Plugin
+## 3. Step 1: Clone and Scaffold Your Plugin
+
+First, clone the community repository, then run `init` inside it:
 
 ```bash
+git clone git@github.com:yz06276/plugin-store-community.git
+cd plugin-store-community
 plugin-store init my-awesome-plugin
 ```
 
-This generates a standard directory for a Skill-only plugin:
+`init` auto-detects the `submissions/` directory and creates your plugin there:
 
 ```
-my-awesome-plugin/
+submissions/my-awesome-plugin/
 ├── plugin.yaml                        # Plugin manifest (you fill this in)
 ├── skills/
 │   └── my-awesome-plugin/
-│       ├── SKILL.md                   # Skill definition (you write this)
+│       ├── SKILL.md                   # Skill definition (with onchainos demo built-in)
 │       └── references/
 │           └── cli-reference.md       # CLI reference docs (you write this)
 ├── LICENSE                            # MIT license template
@@ -435,47 +439,16 @@ Fix all errors (❌) before submitting. Warnings (⚠️) are advisory.
 
 ## 8. Step 6: Submit via Pull Request
 
-### 1. Clone the community repository
-
-```bash
-git clone git@github.com:yz06276/plugin-store-community.git
-cd plugin-store-community
-```
-
-### 2. Create a branch and add your plugin
+Since you already cloned the repo in Step 1 and your plugin is in `submissions/`, just create a branch and push:
 
 ```bash
 git checkout -b submit/my-awesome-plugin
-cp -r /path/to/my-awesome-plugin submissions/my-awesome-plugin
-```
-
-### 3. Verify the directory structure
-
-```
-submissions/
-  my-awesome-plugin/
-    plugin.yaml
-    skills/
-      my-awesome-plugin/
-        SKILL.md
-        references/
-          cli-reference.md
-    LICENSE
-    CHANGELOG.md
-    README.md
-```
-
-### 4. Commit and push
-
-```bash
 git add submissions/my-awesome-plugin/
 git commit -m "[new-plugin] my-awesome-plugin v1.0.0"
 git push origin submit/my-awesome-plugin
 ```
 
-### 5. Open a Pull Request
-
-Go to GitHub and create a Pull Request from your branch. Use this title format:
+Then open a Pull Request on GitHub. Use this title format:
 
 ```
 [new-plugin] my-awesome-plugin v1.0.0

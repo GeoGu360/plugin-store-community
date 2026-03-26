@@ -4,20 +4,22 @@ Submit your plugin to the [Plugin Store](https://github.com/yz06276/plugin-store
 
 ## Quick Start (5 steps)
 
-### Step 1: Create your plugin
+### Step 1: Clone and create your plugin
 
 ```bash
+git clone git@github.com:yz06276/plugin-store-community.git
+cd plugin-store-community
 plugin-store init my-plugin
 ```
 
-This generates a ready-to-edit template:
+`init` auto-detects you're in the community repo and creates `submissions/my-plugin/`:
 
 ```
-my-plugin/
+submissions/my-plugin/
 ├── plugin.yaml       ← fill in your plugin info
 ├── skills/
 │   └── my-plugin/
-│       └── SKILL.md  ← write what your plugin does
+│       └── SKILL.md  ← write what your plugin does (with onchainos demo)
 ├── LICENSE
 └── README.md
 ```
@@ -45,26 +47,14 @@ components:
 api_calls: []        # external API domains, if any
 ```
 
-Then write `SKILL.md` — it teaches the AI agent how to use your plugin:
-
-```markdown
-# My Plugin
-
-## Commands
-
-### Search Token
-​```bash
-onchainos token search --query "ETH" --chain ethereum
-​```
-**When to use**: when the user asks to find a token.
-```
+Then edit `SKILL.md` — it teaches the AI agent how to use your plugin. The generated template already includes working onchainos examples.
 
 > **Important:** All on-chain interactions — wallet signing, transaction broadcasting, swap execution, contract calls — **must** use [onchainos CLI](https://github.com/okx/onchainos-skills). You are free to query external data sources (third-party DeFi APIs, market data providers, etc.), but any action that touches the blockchain must go through onchainos. Plugins that bypass onchainos for on-chain operations will be rejected.
 
 ### Step 3: Check locally
 
 ```bash
-plugin-store lint ./my-plugin/
+plugin-store lint ./submissions/my-plugin/
 ```
 
 Fix any errors (❌) it reports, then re-run until you see ✓.
@@ -72,10 +62,7 @@ Fix any errors (❌) it reports, then re-run until you see ✓.
 ### Step 4: Submit
 
 ```bash
-git clone git@github.com:yz06276/plugin-store-community.git
-cd plugin-store-community
 git checkout -b submit/my-plugin
-cp -r /path/to/my-plugin submissions/my-plugin
 git add submissions/my-plugin/
 git commit -m "[new-plugin] my-plugin v1.0.0"
 git push origin submit/my-plugin

@@ -8,7 +8,7 @@
 
 1. [什么是 plugin？](#section-1)
 2. [开始之前](#section-2)
-3. [第一步：生成 plugin 脚手架](#section-3)
+3. [第一步：克隆仓库并生成 plugin 脚手架](#section-3)
 4. [第二步：编写 plugin.yaml](#section-4)
 5. [第三步：编写 SKILL.md](#section-5)
 6. [第四步：声明 API 调用](#section-6)
@@ -107,25 +107,29 @@ plugin 有一个必须的核心：**SKILL.md** — 一个 Markdown 文档，教 
 
 <a id="section-3"></a>
 
-## 3. 第一步：生成 plugin 脚手架
+## 3. 第一步：克隆仓库并生成 plugin 脚手架
+
+先克隆 community 仓库，再在里面运行 `init`：
 
 ```bash
+git clone git@github.com:yz06276/plugin-store-community.git
+cd plugin-store-community
 plugin-store init my-awesome-plugin
 ```
 
-生成标准目录结构：
+`init` 自动检测到 `submissions/` 目录，直接在里面创建你的 plugin：
 
 ```
-my-awesome-plugin/
-├── plugin.yaml # plugin 清单（需要填写）
+submissions/my-awesome-plugin/
+├── plugin.yaml                        # plugin 清单（需要填写）
 ├── skills/
-│ └── my-awesome-plugin/
-│ ├── SKILL.md # 技能定义（需要编写）
-│ └── references/
-│ └── cli-reference.md # CLI 参考文档（需要编写）
-├── LICENSE # MIT 许可证模板
-├── CHANGELOG.md # 版本变更记录
-└── README.md # plugin 说明
+│   └── my-awesome-plugin/
+│       ├── SKILL.md                   # 技能定义（内置 onchainos demo）
+│       └── references/
+│           └── cli-reference.md       # CLI 参考文档
+├── LICENSE                            # MIT 许可证模板
+├── CHANGELOG.md                       # 版本变更记录
+└── README.md                          # plugin 说明
 ```
 
 **如果你要构建 Skill + Binary plugin**，你还需要：
@@ -459,45 +463,16 @@ Linting ./my-awesome-plugin/...
 
 ## 8. 第六步：通过 Pull Request 提交
 
-### 1. 克隆社区仓库
-
-```bash
-git clone git@github.com:yz06276/plugin-store-community.git
-cd plugin-store-community
-```
-
-### 2. 创建分支并添加你的 plugin
+你已经在第一步克隆了仓库，plugin 也在 `submissions/` 里了，直接创建分支并推送：
 
 ```bash
 git checkout -b submit/my-awesome-plugin
-cp -r /path/to/my-awesome-plugin submissions/my-awesome-plugin
-```
-
-### 3. 确认目录结构
-
-```
-submissions/
-  my-awesome-plugin/
-    plugin.yaml
-    skills/
-      my-awesome-plugin/
-        SKILL.md
-        references/
-          cli-reference.md
-    LICENSE
-    CHANGELOG.md
-    README.md
-```
-
-### 4. 提交并推送
-
-```bash
 git add submissions/my-awesome-plugin/
 git commit -m "[new-plugin] my-awesome-plugin v1.0.0"
 git push origin submit/my-awesome-plugin
 ```
 
-### 5. 创建 Pull Request
+然后在 GitHub 上创建 Pull Request。
 
 在 GitHub 上从你的分支创建 Pull Request。使用以下标题格式：
 

@@ -564,7 +564,7 @@ Phase 3：AI 代码审查（Claude）
 - 使用保留名称前缀（`okx-`、`official-`、`plugin-store-`）
 - 绕过 onchainos CLI 进行链上操作（钱包签名、交易广播、合约调用等）
 - 包含 prompt injection 模式
-- 超过文件大小限制（单文件 100KB，总计 1MB）
+- 超过文件大小限制（单文件 200KB，总计 5MB）
 
 ### 所有开发者可以提交的内容
 

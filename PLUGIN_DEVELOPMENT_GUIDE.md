@@ -531,7 +531,7 @@ If your update changes `api_calls`, the review will be more thorough. The AI rev
 - Use reserved name prefixes (`okx-`, `official-`, `plugin-store-`)
 - Bypass onchainos CLI (use direct RPC, external price APIs, web3 libraries)
 - Include prompt injection patterns
-- Exceed file size limits (100KB per file, 1MB total)
+- Exceed file size limits (200KB per file, 5MB total)
 
 ### What Any Developer Can Submit
 

@@ -30,12 +30,12 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full guide.
 
 ## Core Concept: Skill is the Entry Point
 
-Every plugin must include a SKILL.md. It is the **single entry point** that tells the AI agent how to use your plugin — whether it's a pure Skill, an MCP server, or a binary. The Skill orchestrates onchainos CLI commands and your custom tools.
+Every plugin must include a SKILL.md. It is the **single entry point** that tells the AI agent how to use your plugin — whether it's a pure Skill or includes a binary. The Skill orchestrates onchainos CLI commands and your custom tools.
 
 ```
 SKILL.md (orchestrator)
   ├── onchainos CLI commands (platform capabilities)
-  └── Your MCP tools / binary commands (your capabilities)
+  └── Your binary commands (your capabilities)
 ```
 
 Any developer can also include binaries by submitting source code — we compile it. See the [development guide](./docs/PLUGIN_DEVELOPMENT_GUIDE.md) for details.

@@ -29,7 +29,7 @@ Produce a comprehensive review report in EXACTLY this markdown format. Do not ad
 ## 2. Architecture Analysis
 
 **Components**:
-[List which components are included: skill / mcp / binary]
+[List which components are included: skill / binary]
 
 **Skill Structure**:
 [Describe the SKILL.md structure — sections present, command count, reference docs]

@@ -160,11 +160,6 @@ tags: [defi, yield]
 components:
  skill:
  dir: skills/defi-yield-optimizer # SKILL.md — 始终必须，是入口
- mcp:
- type: binary
- command: defi-yield # 编译后的二进制名
- args: ["--stdio"]
- env: [DEFI_API_KEY]
 
 build:
  lang: rust # rust | go | typescript | node | python
@@ -633,11 +628,6 @@ tags: [defi]
 components:
  skill:
  dir: skills/my-binary-tool # SKILL.md 始终必须
- mcp:
- type: binary
- command: my-binary-tool
- args: ["--stdio"]
- env: [API_KEY]
 
 build:
  lang: rust # rust | go | typescript | node | python

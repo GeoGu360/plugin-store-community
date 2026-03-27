@@ -9,7 +9,7 @@
 name: "Phase 3: AI Code Review"
 
 on:
-  pull_request:
+  pull_request_target:
     paths:
       - 'submissions/**'
     types: [opened, synchronize, reopened]
@@ -36,7 +36,7 @@ jobs:
       - name: Detect plugin
         id: detect
         run: |
-          CHANGED=$(git diff --name-only origin/main...HEAD -- 'submissions/' | head -100)
+          CHANGED=$(git diff --name-only origin/main...${{ github.event.pull_request.head.sha }} -- 'submissions/' | head -100)
           PLUGIN_NAME=$(echo "$CHANGED" | head -1 | cut -d'/' -f2)
           PLUGIN_DIR="submissions/${PLUGIN_NAME}"
           echo "plugin_dir=${PLUGIN_DIR}" >> "$GITHUB_OUTPUT"
@@ -80,33 +80,39 @@ jobs:
             echo ""
 
             # ── Each command module (the actual API surface) ──────
-            for cmd_file in /tmp/onchainos/cli/src/commands/*.rs; do
-              CMD_NAME=$(basename "$cmd_file" .rs)
-              [ "$CMD_NAME" = "mod" ] && continue
-              echo "## Command: ${CMD_NAME}"
-              echo '```rust'
-              cat "$cmd_file"
-              echo '```'
-              echo ""
-            done
+            if ls /tmp/onchainos/cli/src/commands/*.rs 1>/dev/null 2>&1; then
+              for cmd_file in /tmp/onchainos/cli/src/commands/*.rs; do
+                CMD_NAME=$(basename "$cmd_file" .rs)
+                [ "$CMD_NAME" = "mod" ] && continue
+                echo "## Command: ${CMD_NAME}"
+                echo '```rust'
+                cat "$cmd_file"
+                echo '```'
+                echo ""
+              done
+            fi
 
             # ── Agentic wallet subcommands ────────────────────────
-            for cmd_file in /tmp/onchainos/cli/src/commands/agentic_wallet/*.rs; do
-              CMD_NAME=$(basename "$cmd_file" .rs)
-              [ "$CMD_NAME" = "mod" ] && continue
-              echo "## Wallet: ${CMD_NAME}"
+            if ls /tmp/onchainos/cli/src/commands/agentic_wallet/*.rs 1>/dev/null 2>&1; then
+              for cmd_file in /tmp/onchainos/cli/src/commands/agentic_wallet/*.rs; do
+                CMD_NAME=$(basename "$cmd_file" .rs)
+                [ "$CMD_NAME" = "mod" ] && continue
+                echo "## Wallet: ${CMD_NAME}"
+                echo '```rust'
+                cat "$cmd_file"
+                echo '```'
+                echo ""
+              done
+            fi
+
+            # ── MCP server tools ──────────────────────────────────
+            if [ -f /tmp/onchainos/cli/src/mcp/mod.rs ]; then
+              echo "## MCP Server Tools"
               echo '```rust'
-              cat "$cmd_file"
+              head -200 /tmp/onchainos/cli/src/mcp/mod.rs
               echo '```'
               echo ""
-            done
-
-            # ── MCP server tools (available as MCP) ───────────────
-            echo "## MCP Server Tools"
-            echo '```rust'
-            head -200 /tmp/onchainos/cli/src/mcp/mod.rs
-            echo '```'
-            echo ""
+            fi
 
             # ── Official skill definitions (the expected format) ──
             echo "## Official SKILL.md Examples"
@@ -421,7 +427,7 @@ jobs:
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: ${{ github.event.pull_request.number }},
             });
             const botComment = comments.find(c =>
               c.user.type === 'Bot' && c.body.includes('Phase 3: AI Code Review Report')
@@ -431,12 +437,12 @@ jobs:
             if (botComment) {
               await github.rest.issues.updateComment({ ...params, comment_id: botComment.id });
             } else {
-              await github.rest.issues.createComment({ ...params, issue_number: context.issue.number });
+              await github.rest.issues.createComment({ ...params, issue_number: ${{ github.event.pull_request.number }} });
             }
 
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: ${{ github.event.pull_request.number }},
               labels: ['ai-reviewed']
             });

@@ -1,11 +1,14 @@
 # Phase 2: Structural Validation
-# Runs on every PR that touches submissions/ — validates plugin.yaml schema,
-# naming, license, file sizes, permissions, SKILL.md frontmatter.
+# Uses pull_request_target to have write permissions for PR comments/labels
+# even when the PR comes from an external contributor (fork).
+#
+# SECURITY: pull_request_target runs the workflow from main (not from the PR),
+# so the workflow code itself is trusted. We only checkout PR code for linting.
 
 name: "Phase 2: Structure Validation"
 
 on:
-  pull_request:
+  pull_request_target:
     paths:
       - 'submissions/**'
     types: [opened, synchronize, reopened]
@@ -23,29 +26,28 @@ jobs:
       plugin_name: ${{ steps.find.outputs.plugin_name }}
       is_new: ${{ steps.find.outputs.is_new }}
     steps:
+      # Checkout the PR code (not main) for inspection
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Find changed plugin directory
         id: find
         run: |
-          # Get list of changed files in submissions/
-          CHANGED=$(git diff --name-only origin/main...HEAD -- 'submissions/' | head -100)
+          CHANGED=$(git diff --name-only origin/main...${{ github.event.pull_request.head.sha }} -- 'submissions/' | head -100)
 
           if [ -z "$CHANGED" ]; then
             echo "No changes in submissions/"
             exit 1
           fi
 
-          # Extract the plugin directory name (first path component under submissions/)
           PLUGIN_NAME=$(echo "$CHANGED" | head -1 | cut -d'/' -f2)
           PLUGIN_DIR="submissions/${PLUGIN_NAME}"
 
           echo "plugin_dir=${PLUGIN_DIR}" >> "$GITHUB_OUTPUT"
           echo "plugin_name=${PLUGIN_NAME}" >> "$GITHUB_OUTPUT"
 
-          # Check if this is a new plugin or an update
           if git show origin/main:"${PLUGIN_DIR}/plugin.yaml" > /dev/null 2>&1; then
             echo "is_new=false" >> "$GITHUB_OUTPUT"
           else
@@ -56,20 +58,20 @@ jobs:
 
       - name: Verify PR only modifies one plugin
         run: |
-          CHANGED=$(git diff --name-only origin/main...HEAD -- 'submissions/')
+          CHANGED=$(git diff --name-only origin/main...${{ github.event.pull_request.head.sha }} -- 'submissions/')
           DIRS=$(echo "$CHANGED" | cut -d'/' -f2 | sort -u)
           COUNT=$(echo "$DIRS" | wc -l | tr -d ' ')
 
           if [ "$COUNT" -gt 1 ]; then
-            echo "::error::PR modifies multiple plugins: $(echo $DIRS | tr '\n' ', '). Please submit one plugin per PR."
+            echo "::error::PR modifies multiple plugins: $(echo $DIRS | tr '\n' ', ')."
             exit 1
           fi
 
       - name: Verify PR does not modify files outside submissions/
         run: |
-          OUTSIDE=$(git diff --name-only origin/main...HEAD | grep -v '^submissions/' || true)
+          OUTSIDE=$(git diff --name-only origin/main...${{ github.event.pull_request.head.sha }} | grep -v '^submissions/' || true)
           if [ -n "$OUTSIDE" ]; then
-            echo "::error::PR modifies files outside submissions/: ${OUTSIDE}. Only submissions/ changes are allowed."
+            echo "::error::PR modifies files outside submissions/: ${OUTSIDE}."
             exit 1
           fi
 
@@ -79,6 +81,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -94,9 +98,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-lint-
 
       - name: Install plugin-store CLI
-        run: |
-          # Install from the plugin-store repo (specify package name to avoid ambiguity)
-          cargo install --git https://github.com/yz06276/plugin-store.git  plugin-store
+        run: cargo install --git https://github.com/yz06276/plugin-store.git plugin-store
 
       - name: Run lint
         id: lint
@@ -108,7 +110,6 @@ jobs:
 
           echo "$OUTPUT"
 
-          # Save output for PR comment
           {
             echo 'lint_output<<LINT_EOF'
             echo "$OUTPUT"
@@ -124,47 +125,38 @@ jobs:
           script: |
             const isNew = '${{ needs.detect-plugin.outputs.is_new }}' === 'true';
             const passed = '${{ steps.lint.outputs.exit_code }}' === '0';
+            const prNumber = ${{ github.event.pull_request.number }};
 
-            // Add type label
             const typeLabel = isNew ? 'new-plugin' : 'plugin-update';
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              labels: [typeLabel]
-            });
-
-            // Add result label
-            if (passed) {
+            try {
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
-                labels: ['structure-validated']
+                issue_number: prNumber,
+                labels: [typeLabel]
               });
-              // Remove needs-fix if present
+            } catch (e) { console.log('Label error:', e.message); }
+
+            if (passed) {
               try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: prNumber, labels: ['structure-validated']
+                });
                 await github.rest.issues.removeLabel({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  name: 'needs-fix'
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: prNumber, name: 'needs-fix'
                 });
               } catch (e) { /* label not present */ }
             } else {
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                labels: ['needs-fix']
-              });
-              // Remove structure-validated if present
               try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: prNumber, labels: ['needs-fix']
+                });
                 await github.rest.issues.removeLabel({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  name: 'structure-validated'
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: prNumber, name: 'structure-validated'
                 });
               } catch (e) { /* label not present */ }
             }
@@ -178,40 +170,23 @@ jobs:
             const passed = '${{ steps.lint.outputs.exit_code }}' === '0';
             const icon = passed ? '✅' : '❌';
             const status = passed ? 'PASSED' : 'FAILED';
+            const prNumber = ${{ github.event.pull_request.number }};
 
-            const body = `## ${icon} Phase 2: Structure Validation — ${status}
+            const body = `## ${icon} Phase 2: Structure Validation — ${status}\n\n\`\`\`\n${output}\n\`\`\`\n\n${passed ? '→ Proceeding to Phase 3: AI Code Review' : '→ Please fix the errors above and push again.'}`;
 
-            \`\`\`
-            ${output}
-            \`\`\`
-
-            ${passed ? '→ Proceeding to Phase 3: AI Code Review' : '→ Please fix the errors above and push again.'}
-            `;
-
-            // Find existing bot comment to update (avoid spam)
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: prNumber,
             });
-            const botComment = comments.data.find(c =>
+            const botComment = comments.find(c =>
               c.user.type === 'Bot' && c.body.includes('Phase 2: Structure Validation')
             );
 
+            const params = { owner: context.repo.owner, repo: context.repo.repo, body };
             if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: body
-              });
+              await github.rest.issues.updateComment({ ...params, comment_id: botComment.id });
             } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: body
-              });
+              await github.rest.issues.createComment({ ...params, issue_number: prNumber });
             }
 
       - name: Fail if lint errors

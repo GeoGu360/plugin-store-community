@@ -15,7 +15,7 @@
 name: "Phase 4: Build Verification"
 
 on:
-  pull_request:
+  pull_request_target:
     paths:
       - 'submissions/**'
     types: [opened, synchronize, reopened]
@@ -46,7 +46,7 @@ jobs:
       - name: Find plugin and parse build config
         id: find
         run: |
-          CHANGED=$(git diff --name-only origin/main...HEAD -- 'submissions/' | head -100)
+          CHANGED=$(git diff --name-only origin/main...${{ github.event.pull_request.head.sha }} -- 'submissions/' | head -100)
           PLUGIN_NAME=$(echo "$CHANGED" | head -1 | cut -d'/' -f2)
           PLUGIN_DIR="submissions/${PLUGIN_NAME}"
           echo "plugin_dir=${PLUGIN_DIR}" >> "$GITHUB_OUTPUT"
@@ -386,7 +386,7 @@ jobs:
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: ${{ github.event.pull_request.number }},
             });
             const botComment = comments.find(c =>
               c.user.type === 'Bot' && c.body.includes('Phase 4: Build Verification')
@@ -396,5 +396,5 @@ jobs:
             if (botComment) {
               await github.rest.issues.updateComment({ ...params, comment_id: botComment.id });
             } else {
-              await github.rest.issues.createComment({ ...params, issue_number: context.issue.number });
+              await github.rest.issues.createComment({ ...params, issue_number: ${{ github.event.pull_request.number }} });
             }

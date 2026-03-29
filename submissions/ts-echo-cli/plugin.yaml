@@ -1,0 +1,30 @@
+schema_version: 1
+name: ts-echo-cli
+version: "1.0.0"
+description: "A TypeScript echo CLI with JSON formatting, CSV parsing, template interpolation, and regex matching"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags:
+  - typescript
+  - json
+  - text-processing
+
+components:
+  skill:
+    dir: skills/ts-echo-cli
+  binary:
+    repo: okx/plugin-store
+    asset_pattern: "ts-echo-cli-{target}"
+    checksums_asset: checksums.txt
+
+build:
+  lang: typescript
+  source_repo: yz06276/ts-echo-cli
+  source_commit: "8de0303fcff15da3401e0dc9507924dbd12b4cfe"
+  binary_name: ts-echo-cli
+  main: src/index.ts
+
+api_calls: []

@@ -1,9 +1,10 @@
 # Phase 7: Auto-publish
 # After a PR is merged to main, this workflow:
 # 1. Scans all submissions/*/plugin.yaml
-# 2. Generates registry.json entries for each
-# 3. Pushes updated registry.json to the plugin-store repo
-# 4. Creates a git tag for the plugin version
+# 2. Generates registry.json entries
+# 3. For plugins with build config: compiles on multiple platforms + creates Release
+# 4. Updates registry.json in plugin-store repo (with binary download info)
+# 5. Creates git tags
 
 name: "Phase 7: Publish"
 
@@ -17,9 +18,17 @@ permissions:
   contents: write
 
 jobs:
-  publish:
-    name: Generate registry and publish
+  # ═══════════════════════════════════════════════════════════════
+  #  Step 1: Detect what changed and extract build info
+  # ═══════════════════════════════════════════════════════════════
+  detect:
+    name: Detect changes
     runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+      changed_plugins: ${{ steps.detect.outputs.changed_plugins }}
+      build_plugins_json: ${{ steps.build_info.outputs.build_plugins_json }}
+      has_builds: ${{ steps.build_info.outputs.has_builds }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,14 +37,11 @@ jobs:
       - name: Detect changed plugins
         id: detect
         run: |
-          # Find which plugins were changed in the last merge commit
           CHANGED=$(git diff --name-only HEAD~1...HEAD -- 'submissions/' || true)
           if [ -z "$CHANGED" ]; then
-            echo "No plugin changes detected"
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
           PLUGINS=$(echo "$CHANGED" | cut -d'/' -f2 | sort -u)
           echo "changed_plugins=${PLUGINS}" >> "$GITHUB_OUTPUT"
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
@@ -47,11 +53,239 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: Generate registry entries from submissions
+      - name: Extract build info for changed plugins
+        id: build_info
         if: steps.detect.outputs.has_changes == 'true'
-        id: generate
         run: |
-          # Build a JSON array of community plugin entries from all submissions
+          # Find which changed plugins have build configs
+          BUILD_PLUGINS="[]"
+          for PLUGIN_NAME in ${{ steps.detect.outputs.changed_plugins }}; do
+            YAML="submissions/${PLUGIN_NAME}/plugin.yaml"
+            [ -f "$YAML" ] || continue
+            BUILD_LANG=$(yq '.build.lang // ""' "$YAML")
+            [ -z "$BUILD_LANG" ] && continue
+
+            SOURCE_REPO=$(yq '.build.source_repo // ""' "$YAML")
+            SOURCE_COMMIT=$(yq '.build.source_commit // ""' "$YAML")
+            SOURCE_DIR=$(yq '.build.source_dir // "."' "$YAML")
+            BINARY_NAME=$(yq '.build.binary_name // ""' "$YAML")
+            BUILD_MAIN=$(yq '.build.main // ""' "$YAML")
+
+            ITEM=$(jq -n \
+              --arg name "$PLUGIN_NAME" \
+              --arg lang "$BUILD_LANG" \
+              --arg repo "$SOURCE_REPO" \
+              --arg commit "$SOURCE_COMMIT" \
+              --arg dir "$SOURCE_DIR" \
+              --arg bin "$BINARY_NAME" \
+              --arg main "$BUILD_MAIN" \
+              '{name:$name, lang:$lang, source_repo:$repo, source_commit:$commit, source_dir:$dir, binary_name:$bin, main:$main}')
+
+            BUILD_PLUGINS=$(echo "$BUILD_PLUGINS" | jq --argjson item "$ITEM" '. + [$item]')
+          done
+
+          echo "build_plugins_json=$(echo "$BUILD_PLUGINS" | jq -c '.')" >> "$GITHUB_OUTPUT"
+          COUNT=$(echo "$BUILD_PLUGINS" | jq length)
+          if [ "$COUNT" -gt 0 ]; then
+            echo "has_builds=true" >> "$GITHUB_OUTPUT"
+            echo "Found $COUNT plugins with build configs"
+          else
+            echo "has_builds=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ═══════════════════════════════════════════════════════════════
+  #  Step 2: Multi-platform build for binary plugins
+  # ═══════════════════════════════════════════════════════════════
+  build-release:
+    name: Build ${{ matrix.plugin }} (${{ matrix.target }})
+    needs: detect
+    if: needs.detect.outputs.has_builds == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+        # Dynamic: we iterate over build_plugins in the step itself
+    steps:
+      - name: Process each build plugin
+        id: build
+        env:
+          BUILD_PLUGINS: ${{ needs.detect.outputs.build_plugins_json }}
+        run: |
+          echo "$BUILD_PLUGINS" | jq -r '.[] | @base64' | while read ENCODED; do
+            PLUGIN=$(echo "$ENCODED" | base64 -d)
+            NAME=$(echo "$PLUGIN" | jq -r '.name')
+            LANG=$(echo "$PLUGIN" | jq -r '.lang')
+            REPO=$(echo "$PLUGIN" | jq -r '.source_repo')
+            COMMIT=$(echo "$PLUGIN" | jq -r '.source_commit')
+            DIR=$(echo "$PLUGIN" | jq -r '.source_dir')
+            BIN=$(echo "$PLUGIN" | jq -r '.binary_name')
+            MAIN=$(echo "$PLUGIN" | jq -r '.main')
+
+            [ "$DIR" = "." ] && DIR=""
+
+            echo "Building $NAME ($LANG) for ${{ matrix.target }}"
+
+            # Clone source
+            git clone --depth=100 "https://github.com/${REPO}.git" "/tmp/build-${NAME}"
+            cd "/tmp/build-${NAME}"
+            git checkout "$COMMIT"
+            [ -n "$DIR" ] && cd "$DIR"
+
+            # Build based on language
+            case "$LANG" in
+              rust)
+                rustup target add ${{ matrix.target }} 2>/dev/null || true
+                cargo build --release --target ${{ matrix.target }}
+                cp "target/${{ matrix.target }}/release/${BIN}" "/tmp/${BIN}-${{ matrix.target }}"
+                ;;
+              go)
+                GOOS=$(echo "${{ matrix.target }}" | sed 's/.*-//' | sed 's/darwin/darwin/;s/linux/linux/')
+                GOARCH=$(echo "${{ matrix.target }}" | sed 's/-.*//' | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+                CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -o "/tmp/${BIN}-${{ matrix.target }}" -ldflags="-s -w" .
+                ;;
+              typescript|node)
+                # Bun compile - determine bun target
+                case "${{ matrix.target }}" in
+                  x86_64-unknown-linux-gnu) BUN_TARGET="bun-linux-x64" ;;
+                  aarch64-apple-darwin) BUN_TARGET="bun-darwin-arm64" ;;
+                  x86_64-apple-darwin) BUN_TARGET="bun-darwin-x64" ;;
+                esac
+                curl -fsSL https://bun.sh/install | bash
+                export PATH="$HOME/.bun/bin:$PATH"
+                bun install
+                bun build --compile --target="$BUN_TARGET" "$MAIN" --outfile "/tmp/${BIN}-${{ matrix.target }}"
+                ;;
+              python)
+                # PyInstaller only on matching platform
+                if [ "${{ matrix.target }}" = "x86_64-unknown-linux-gnu" ] && [ "$(uname)" = "Linux" ]; then
+                  pip install pyinstaller
+                  pip install -e . 2>/dev/null || pip install -r requirements.txt 2>/dev/null || true
+                  pyinstaller --onefile --name "${BIN}" "$MAIN"
+                  cp "dist/${BIN}" "/tmp/${BIN}-${{ matrix.target }}"
+                elif [ "${{ matrix.target }}" != "x86_64-unknown-linux-gnu" ] && [ "$(uname)" = "Darwin" ]; then
+                  pip3 install pyinstaller
+                  pip3 install -e . 2>/dev/null || pip3 install -r requirements.txt 2>/dev/null || true
+                  pyinstaller --onefile --name "${BIN}" "$MAIN"
+                  cp "dist/${BIN}" "/tmp/${BIN}-${{ matrix.target }}"
+                else
+                  echo "Skipping Python build on mismatched platform"
+                fi
+                ;;
+            esac
+
+            cd /tmp
+          done
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.target }}
+          path: /tmp/*-${{ matrix.target }}
+          if-no-files-found: ignore
+
+  # ═══════════════════════════════════════════════════════════════
+  #  Step 3: Create Release with all binaries
+  # ═══════════════════════════════════════════════════════════════
+  create-release:
+    name: Create Release
+    needs: [detect, build-release]
+    if: always() && needs.detect.outputs.has_builds == 'true'
+    runs-on: ubuntu-latest
+    env:
+      PLUGIN_STORE_TOKEN: ${{ secrets.PLUGIN_STORE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/all-artifacts
+          merge-multiple: true
+
+      - name: Generate checksums and create releases
+        env:
+          BUILD_PLUGINS: ${{ needs.detect.outputs.build_plugins_json }}
+        run: |
+          ls -la /tmp/all-artifacts/ 2>/dev/null || echo "No artifacts"
+
+          echo "$BUILD_PLUGINS" | jq -r '.[] | @base64' | while read ENCODED; do
+            PLUGIN=$(echo "$ENCODED" | base64 -d)
+            NAME=$(echo "$PLUGIN" | jq -r '.name')
+            BIN=$(echo "$PLUGIN" | jq -r '.binary_name')
+            VERSION=$(yq '.version' "submissions/${NAME}/plugin.yaml")
+
+            echo "Creating release for ${NAME} v${VERSION}"
+
+            # Collect binaries for this plugin
+            mkdir -p "/tmp/release-${NAME}"
+            cp /tmp/all-artifacts/${BIN}-* "/tmp/release-${NAME}/" 2>/dev/null || true
+
+            # Make executable
+            chmod +x /tmp/release-${NAME}/* 2>/dev/null || true
+
+            # Generate checksums
+            cd "/tmp/release-${NAME}"
+            if ls ${BIN}-* 1>/dev/null 2>&1; then
+              sha256sum ${BIN}-* > checksums.txt
+              echo "Checksums:"
+              cat checksums.txt
+
+              # Create release on plugin-store repo
+              # Use gh CLI with the plugin-store token
+              echo "$PLUGIN_STORE_TOKEN" | gh auth login --with-token 2>/dev/null
+
+              TAG="community/${NAME}@${VERSION}"
+              TITLE="${NAME} v${VERSION} (community)"
+
+              NOTES="Community plugin binary release. Source: $(echo "$PLUGIN" | jq -r '.source_repo')@$(echo "$PLUGIN" | jq -r '.source_commit'). Language: $(echo "$PLUGIN" | jq -r '.lang')"
+
+              gh release create "$TAG" --repo okx/plugin-store --title "$TITLE" --notes "$NOTES" ${BIN}-* checksums.txt 2>/dev/null || \
+              gh release upload "$TAG" --repo okx/plugin-store --clobber ${BIN}-* checksums.txt 2>/dev/null || true
+
+              echo "Release created: $TAG"
+            else
+              echo "No binaries found for ${NAME}, skipping release"
+            fi
+
+            cd /tmp
+          done
+
+  # ═══════════════════════════════════════════════════════════════
+  #  Step 4: Update registry.json with binary download info
+  # ═══════════════════════════════════════════════════════════════
+  publish-registry:
+    name: Update registry
+    needs: [detect, create-release]
+    if: always() && needs.detect.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Generate registry entries
+        run: |
           ENTRIES="[]"
 
           for PLUGIN_DIR in submissions/*/; do
@@ -61,71 +295,61 @@ jobs:
             NAME=$(yq '.name' "$YAML_FILE")
             [ "$NAME" = "_example-plugin" ] && continue
 
-            VERSION=$(yq '.version' "$YAML_FILE")
-            DESC=$(yq '.description' "$YAML_FILE")
-            AUTHOR_NAME=$(yq '.author.name' "$YAML_FILE")
-            ALIAS=$(yq '.alias // ""' "$YAML_FILE")
-            CATEGORY=$(yq '.category' "$YAML_FILE")
-            TAGS=$(yq '.tags | @json' "$YAML_FILE")
-
-            # Skill component
-            SKILL_DIR=$(yq '.components.skill.dir // .components.skills[0].dir // ""' "$YAML_FILE")
-            SKILL_REPO="okx/plugin-store-community"
             COMMIT_SHA=$(git rev-parse HEAD)
-
-            # Build config (for binary plugins)
             BUILD_LANG=$(yq '.build.lang // ""' "$YAML_FILE")
-            BUILD_SOURCE_REPO=$(yq '.build.source_repo // ""' "$YAML_FILE")
-            BUILD_SOURCE_COMMIT=$(yq '.build.source_commit // ""' "$YAML_FILE")
             BUILD_BINARY_NAME=$(yq '.build.binary_name // ""' "$YAML_FILE")
+            VERSION=$(yq '.version' "$YAML_FILE")
 
-            # Binary component
-            BINARY_REPO=$(yq '.components.binary.repo // ""' "$YAML_FILE")
-            BINARY_PATTERN=$(yq '.components.binary.asset_pattern // ""' "$YAML_FILE")
-            BINARY_CHECKSUMS=$(yq '.components.binary.checksums_asset // ""' "$YAML_FILE")
-
-            # Build the registry entry with all components
-            ENTRY=$(YAML_FILE="$YAML_FILE" BUILD_LANG="$BUILD_LANG" BUILD_SOURCE_REPO="$BUILD_SOURCE_REPO" \
-              BUILD_SOURCE_COMMIT="$BUILD_SOURCE_COMMIT" BUILD_BINARY_NAME="$BUILD_BINARY_NAME" \
-              BINARY_REPO="$BINARY_REPO" BINARY_PATTERN="$BINARY_PATTERN" BINARY_CHECKSUMS="$BINARY_CHECKSUMS" \
+            ENTRY=$(YAML_FILE="$YAML_FILE" COMMIT_SHA="$COMMIT_SHA" \
+              BUILD_LANG="$BUILD_LANG" BUILD_BINARY_NAME="$BUILD_BINARY_NAME" VERSION="$VERSION" \
               python3 << 'PYEOF'
           import json, os
+
+          yf = os.environ["YAML_FILE"]
+          def yq(expr):
+              return os.popen(f"yq '{expr}' {yf}").read().strip()
+
           entry = {
-              "name": os.popen(f"yq '.name' {os.environ['YAML_FILE']}").read().strip(),
-              "version": os.popen(f"yq '.version' {os.environ['YAML_FILE']}").read().strip(),
-              "description": os.popen(f"yq '.description' {os.environ['YAML_FILE']}").read().strip(),
-              "author": {"name": os.popen(f"yq '.author.name' {os.environ['YAML_FILE']}").read().strip()},
-              "category": os.popen(f"yq '.category' {os.environ['YAML_FILE']}").read().strip(),
-              "tags": json.loads(os.popen(f"yq '.tags | @json' {os.environ['YAML_FILE']}").read().strip()),
+              "name": yq(".name"),
+              "version": yq(".version"),
+              "description": yq(".description"),
+              "author": {"name": yq(".author.name")},
+              "category": yq(".category"),
+              "tags": json.loads(yq(".tags | @json")),
               "type": "community-developer",
               "components": {
                   "skill": {
                       "repo": "okx/plugin-store-community",
-                      "dir": os.popen(f"yq '.components.skill.dir // .components.skills[0].dir // \"\"' {os.environ['YAML_FILE']}").read().strip(),
-                      "commit": os.popen("git rev-parse HEAD").read().strip()
+                      "dir": yq(".components.skill.dir // .components.skills[0].dir // \"\""),
+                      "commit": os.environ["COMMIT_SHA"]
                   }
               },
               "link": "https://github.com/okx/plugin-store-community"
           }
-          alias_val = os.popen(f"yq '.alias // \"\"' {os.environ['YAML_FILE']}").read().strip()
+
+          alias_val = yq('.alias // ""')
           if alias_val:
               entry["alias"] = alias_val
-          # Add build config if present
-          if os.environ.get("BUILD_LANG"):
-              entry["build"] = {
-                  "lang": os.environ["BUILD_LANG"],
-                  "source_repo": os.environ["BUILD_SOURCE_REPO"],
-                  "source_commit": os.environ["BUILD_SOURCE_COMMIT"],
-                  "binary_name": os.environ["BUILD_BINARY_NAME"]
-              }
-          # Add binary component if present
-          if os.environ.get("BINARY_REPO"):
+
+          lang = os.environ.get("BUILD_LANG", "")
+          bin_name = os.environ.get("BUILD_BINARY_NAME", "")
+          version = os.environ.get("VERSION", "")
+
+          if lang and bin_name:
+              # Binary component pointing to our Release
               entry["components"]["binary"] = {
-                  "repo": os.environ["BINARY_REPO"],
-                  "asset_pattern": os.environ["BINARY_PATTERN"]
+                  "repo": "okx/plugin-store",
+                  "asset_pattern": bin_name + "-{target}",
+                  "checksums_asset": "checksums.txt",
+                  "release_tag": f"community/{entry['name']}@{version}"
               }
-              if os.environ.get("BINARY_CHECKSUMS"):
-                  entry["components"]["binary"]["checksums_asset"] = os.environ["BINARY_CHECKSUMS"]
+              entry["build"] = {
+                  "lang": lang,
+                  "source_repo": yq(".build.source_repo"),
+                  "source_commit": yq(".build.source_commit"),
+                  "binary_name": bin_name
+              }
+
           print(json.dumps(entry))
           PYEOF
             )
@@ -136,54 +360,36 @@ jobs:
           echo "$ENTRIES" > /tmp/community_entries.json
           echo "Generated $(echo "$ENTRIES" | jq length) community plugin entries"
 
-      - name: Create git tags for changed plugins
-        if: steps.detect.outputs.has_changes == 'true'
+      - name: Create git tags
         run: |
-          for PLUGIN_NAME in ${{ steps.detect.outputs.changed_plugins }}; do
-            YAML_FILE="submissions/${PLUGIN_NAME}/plugin.yaml"
-            [ -f "$YAML_FILE" ] || continue
+          for PLUGIN_NAME in ${{ needs.detect.outputs.changed_plugins }}; do
+            YAML="submissions/${PLUGIN_NAME}/plugin.yaml"
+            [ -f "$YAML" ] || continue
             [ "$PLUGIN_NAME" = "_example-plugin" ] && continue
 
-            VERSION=$(yq '.version' "$YAML_FILE")
+            VERSION=$(yq '.version' "$YAML")
             TAG="plugins/${PLUGIN_NAME}@${VERSION}"
 
             if git rev-parse "$TAG" >/dev/null 2>&1; then
-              echo "Tag $TAG already exists, skipping"
+              echo "Tag $TAG exists"
             else
               git tag "$TAG"
               echo "Created tag: $TAG"
             fi
           done
-
           git push --tags || true
 
-      - name: Upload community entries artifact
-        if: steps.detect.outputs.has_changes == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: community-registry-entries
-          path: /tmp/community_entries.json
-
       - name: Update registry in plugin-store repo
-        if: steps.detect.outputs.has_changes == 'true'
         env:
           PLUGIN_STORE_TOKEN: ${{ secrets.PLUGIN_STORE_TOKEN }}
         run: |
-          # Clone the plugin-store repo
           git clone --depth=1 "https://x-access-token:${PLUGIN_STORE_TOKEN}@github.com/okx/plugin-store.git" /tmp/plugin-store
-
           cd /tmp/plugin-store
 
-          # Read current registry.json
           CURRENT=$(cat registry.json)
-
-          # Get non-community plugins (okx-official, verified-third-party)
           OFFICIAL=$(echo "$CURRENT" | jq '[.plugins[] | select(.type != "community-developer" and .type != "community")]')
-
-          # Get new community entries
           COMMUNITY=$(cat /tmp/community_entries.json)
 
-          # Merge: official + community
           MERGED=$(jq -n \
             --argjson official "$OFFICIAL" \
             --argjson community "$COMMUNITY" \
@@ -196,7 +402,6 @@ jobs:
 
           echo "$MERGED" | jq '.' > registry.json
 
-          # Commit and push
           git config user.name "plugin-store-bot"
           git config user.email "bot@plugin-store.local"
           git add registry.json

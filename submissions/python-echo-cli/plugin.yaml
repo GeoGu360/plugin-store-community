@@ -23,7 +23,7 @@ components:
 build:
   lang: python
   source_repo: yz06276/python-echo-cli
-  source_commit: "73995b8fb627486c5eab24aa788a32b8ee014d28"
+  source_commit: "6b31765b0ccb3f77eeb78f84c1755eebdda9c1e1"
   binary_name: python-echo-cli
   main: src/main.py
 

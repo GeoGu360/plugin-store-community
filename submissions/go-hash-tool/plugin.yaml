@@ -1,0 +1,24 @@
+schema_version: 1
+name: go-hash-tool
+version: "1.0.0"
+description: "A Go-based text echo CLI for hashing and encoding operations"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags:
+  - go
+  - hashing
+
+components:
+  skill:
+    dir: skills/go-hash-tool
+
+build:
+  lang: go
+  source_repo: "yz06276/go-echo-cli"
+  source_commit: "89f239a4b05f54068eae19df20787112bbc26010"
+  binary_name: go-echo-cli
+
+api_calls: []

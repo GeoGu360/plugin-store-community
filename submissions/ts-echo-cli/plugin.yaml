@@ -23,7 +23,7 @@ components:
 build:
   lang: typescript
   source_repo: yz06276/ts-echo-cli
-  source_commit: "8de0303fcff15da3401e0dc9507924dbd12b4cfe"
+  source_commit: "c771e3d6216fa3695f1d1553e1faea2c3be7f2e7"
   binary_name: ts-echo-cli
   main: src/index.ts
 

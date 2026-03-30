@@ -4,7 +4,13 @@
 # and documentation as context. This ensures the review stays current even
 # as onchainos evolves — no hardcoded command lists.
 #
-# Uses OpenRouter API to access the best available Claude model.
+# API Provider Selection:
+#   - Default: Anthropic API (requires ANTHROPIC_API_KEY secret)
+#   - Future:  OpenRouter API (set OPENROUTER_API_KEY secret to activate)
+#   When OPENROUTER_API_KEY is set, the workflow uses OpenRouter to access
+#   Claude models. This enables auto-selection of the best model and
+#   provides access to multiple providers via a single API key.
+#
 # This workflow NEVER fails the PR check — it only provides information.
 
 name: "Phase 3: AI Code Review"
@@ -69,7 +75,6 @@ jobs:
             echo "whether a plugin correctly uses onchainos APIs."
             echo ""
 
-            # ── CLI command definitions (most important) ──────────
             echo "## CLI Command Definitions (src/main.rs)"
             echo '```rust'
             cat /tmp/onchainos/cli/src/main.rs
@@ -82,7 +87,6 @@ jobs:
             echo '```'
             echo ""
 
-            # ── Each command module (the actual API surface) ──────
             if ls /tmp/onchainos/cli/src/commands/*.rs 1>/dev/null 2>&1; then
               for cmd_file in /tmp/onchainos/cli/src/commands/*.rs; do
                 CMD_NAME=$(basename "$cmd_file" .rs)
@@ -95,7 +99,6 @@ jobs:
               done
             fi
 
-            # ── Agentic wallet subcommands ────────────────────────
             if ls /tmp/onchainos/cli/src/commands/agentic_wallet/*.rs 1>/dev/null 2>&1; then
               for cmd_file in /tmp/onchainos/cli/src/commands/agentic_wallet/*.rs; do
                 CMD_NAME=$(basename "$cmd_file" .rs)
@@ -108,7 +111,6 @@ jobs:
               done
             fi
 
-            # ── MCP server tools ──────────────────────────────────
             if [ -f /tmp/onchainos/cli/src/mcp/mod.rs ]; then
               echo "## MCP Server Tools"
               echo '```rust'
@@ -117,7 +119,6 @@ jobs:
               echo ""
             fi
 
-            # ── Official skill definitions (the expected format) ──
             echo "## Official SKILL.md Examples"
             echo ""
             for skill_dir in /tmp/onchainos/skills/*/; do
@@ -131,14 +132,12 @@ jobs:
               echo ""
             done
 
-            # ── API client (shows backend endpoints) ──────────────
             echo "## API Client (src/client.rs)"
             echo '```rust'
             head -100 /tmp/onchainos/cli/src/client.rs
             echo '```'
             echo ""
 
-            # ── Chain definitions ─────────────────────────────────
             echo "## Supported Chains (src/chains.rs)"
             echo '```rust'
             cat /tmp/onchainos/cli/src/chains.rs
@@ -146,68 +145,83 @@ jobs:
 
           } > /tmp/onchainos_context.txt
 
-          # Report size
           SIZE=$(wc -c < /tmp/onchainos_context.txt)
           TOKENS_EST=$((SIZE / 4))
           echo "onchainos context: ${SIZE} bytes (~${TOKENS_EST} tokens)"
 
-      # ── Step 3: Select the best available Claude model ──────────
-      - name: Select best Claude model
-        id: model
+      # ── Step 3: Detect API provider and select model ────────────
+      - name: Select API provider and model
+        id: provider
         env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          echo "Querying available Claude models via OpenRouter..."
+          # ── Provider selection: OpenRouter if key exists, else Anthropic ──
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            echo "provider=openrouter" >> "$GITHUB_OUTPUT"
+            echo "api_url=https://openrouter.ai/api/v1/chat/completions" >> "$GITHUB_OUTPUT"
+            echo "auth_header=Authorization: Bearer ${OPENROUTER_API_KEY}" >> "$GITHUB_OUTPUT"
 
-          HTTP_CODE=$(curl -s -o /tmp/models.json -w "%{http_code}" \
-            https://openrouter.ai/api/v1/models \
-            -H "Authorization: Bearer ${OPENROUTER_API_KEY}")
+            # Auto-select best Claude Opus model from OpenRouter
+            HTTP_CODE=$(curl -s -o /tmp/models.json -w "%{http_code}" \
+              https://openrouter.ai/api/v1/models \
+              -H "Authorization: Bearer ${OPENROUTER_API_KEY}")
 
-          echo "Models API HTTP status: ${HTTP_CODE}"
-
-          BEST_MODEL=""
-          if [ "$HTTP_CODE" = "200" ]; then
-            # Select best Claude model: prefer opus > sonnet > haiku, then latest version
-            BEST_MODEL=$(jq -r '
-              [.data[]
-               | select(.id | startswith("anthropic/claude-"))
-               | select(.id | test("opus"))
-               | . + {
-                   version: (
-                     .id | capture("(?<v>[0-9]+(\\.[0-9]+)?)$") | .v // "0"
-                   )
-                 }
-              ]
-              | sort_by(.version)
-              | reverse
-              | first
-              | .id // empty
-            ' /tmp/models.json 2>/dev/null || echo "")
-
-            # Fallback to sonnet if no opus available
-            if [ -z "$BEST_MODEL" ]; then
+            BEST_MODEL=""
+            if [ "$HTTP_CODE" = "200" ]; then
               BEST_MODEL=$(jq -r '
                 [.data[]
                  | select(.id | startswith("anthropic/claude-"))
-                 | select(.id | test("sonnet"))
+                 | select(.id | test("opus"))
+                 | . + { version: (.id | capture("(?<v>[0-9]+(\\.[0-9]+)?)$") | .v // "0") }
                 ]
-                | sort_by(.id)
-                | reverse
-                | first
-                | .id // empty
+                | sort_by(.version) | reverse | first | .id // empty
               ' /tmp/models.json 2>/dev/null || echo "")
+
+              if [ -z "$BEST_MODEL" ]; then
+                BEST_MODEL=$(jq -r '
+                  [.data[] | select(.id | startswith("anthropic/claude-")) | select(.id | test("sonnet"))]
+                  | sort_by(.id) | reverse | first | .id // empty
+                ' /tmp/models.json 2>/dev/null || echo "")
+              fi
             fi
+            echo "model=${BEST_MODEL:-anthropic/claude-sonnet-4}" >> "$GITHUB_OUTPUT"
+            echo "Provider: OpenRouter | Model: ${BEST_MODEL:-anthropic/claude-sonnet-4}"
+
           else
-            echo "::warning::Models API returned HTTP ${HTTP_CODE}"
-          fi
+            echo "provider=anthropic" >> "$GITHUB_OUTPUT"
+            echo "api_url=https://api.anthropic.com/v1/messages" >> "$GITHUB_OUTPUT"
+            echo "auth_header=x-api-key: ${ANTHROPIC_API_KEY}" >> "$GITHUB_OUTPUT"
 
-          if [ -z "$BEST_MODEL" ]; then
-            echo "::warning::Could not determine best model, falling back to anthropic/claude-sonnet-4"
-            BEST_MODEL="anthropic/claude-sonnet-4"
-          fi
+            # Select best Claude model from Anthropic
+            HTTP_CODE=$(curl -s -o /tmp/models.json -w "%{http_code}" \
+              https://api.anthropic.com/v1/models?limit=100 \
+              -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+              -H "anthropic-version: 2023-06-01")
 
-          echo "Selected model: ${BEST_MODEL}"
-          echo "model=${BEST_MODEL}" >> "$GITHUB_OUTPUT"
+            BEST_MODEL=""
+            if [ "$HTTP_CODE" = "200" ]; then
+              HAS_DATA=$(jq -r '.data | type // "null"' /tmp/models.json 2>/dev/null || echo "null")
+              if [ "$HAS_DATA" = "array" ]; then
+                BEST_MODEL=$(jq -r '
+                  [.data[]
+                   | select(.id | startswith("claude-"))
+                   | . + {
+                       tier_score: (
+                         if (.id | test("opus")) then 3
+                         elif (.id | test("sonnet")) then 2
+                         elif (.id | test("haiku")) then 1
+                         else 0 end
+                       )
+                     }
+                  ]
+                  | sort_by(.tier_score, .created_at) | reverse | first | .id // empty
+                ' /tmp/models.json 2>/dev/null || echo "")
+              fi
+            fi
+            echo "model=${BEST_MODEL:-claude-sonnet-4-20250514}" >> "$GITHUB_OUTPUT"
+            echo "Provider: Anthropic | Model: ${BEST_MODEL:-claude-sonnet-4-20250514}"
+          fi
 
       # ── Step 4: Build the API request ───────────────────────────
       - name: Build API request
@@ -247,7 +261,6 @@ jobs:
               echo ""
             done
 
-            # If plugin has source code (build section), include it for review
             BUILD_DIR=$(python3 -c "
           import yaml
           with open('${YAML_FILE}') as f:
@@ -261,7 +274,6 @@ jobs:
               echo ""
               echo "# Source Code (for security review)"
               echo ""
-              # Include source files, truncate large files to first 300 lines
               find "${PLUGIN_DIR}/${BUILD_DIR}" -type f \
                 \( -name "*.rs" -o -name "*.go" -o -name "*.ts" -o -name "*.js" \
                    -o -name "*.py" -o -name "*.toml" -o -name "*.json" -o -name "*.yaml" \
@@ -285,10 +297,8 @@ jobs:
             fi
           } > /tmp/plugin_content.txt
 
-          # Read system prompt
           cp .github/prompts/ai-review-system.md /tmp/system_prompt.txt
 
-          # Build security rules context from skill-scanner
           {
             echo "# OKX Skill Security Scanner Rules"
             echo ""
@@ -308,84 +318,99 @@ jobs:
             fi
           } > /tmp/security_rules.txt
 
-          RULES_SIZE=$(wc -c < /tmp/security_rules.txt)
-          echo "Security rules context: ${RULES_SIZE} bytes"
-
-          # Combine: system prompt + security rules + onchainos context + plugin content
-          # Use OpenRouter format (OpenAI-compatible)
-          MODEL="${{ steps.model.outputs.model }}"
-          echo "Using model: ${MODEL}"
+          # Build request body (same format works for both Anthropic Messages API and OpenRouter)
+          MODEL="${{ steps.provider.outputs.model }}"
+          PROVIDER="${{ steps.provider.outputs.provider }}"
+          echo "Using model: ${MODEL} via ${PROVIDER}"
 
           ONCHAINOS_AVAILABLE="${{ steps.onchainos.outputs.available }}"
           if [ "$ONCHAINOS_AVAILABLE" = "true" ] && [ -f /tmp/onchainos_context.txt ]; then
-            jq -n \
-              --arg model "$MODEL" \
+            USER_CONTENT=$(jq -n \
               --rawfile system /tmp/system_prompt.txt \
               --rawfile rules /tmp/security_rules.txt \
               --rawfile onchainos /tmp/onchainos_context.txt \
               --rawfile plugin /tmp/plugin_content.txt \
-              '{
-                model: $model,
-                max_tokens: 16384,
-                messages: [
-                  {
-                    role: "user",
-                    content: ($system + "\n\n---\n\n" + $rules + "\n\n---\n\n" + $onchainos + "\n\n---\n\n" + $plugin)
-                  }
-                ]
-              }' > /tmp/api_request.json
+              '$system + "\n\n---\n\n" + $rules + "\n\n---\n\n" + $onchainos + "\n\n---\n\n" + $plugin')
           else
-            jq -n \
-              --arg model "$MODEL" \
+            USER_CONTENT=$(jq -n \
               --rawfile system /tmp/system_prompt.txt \
               --rawfile rules /tmp/security_rules.txt \
               --rawfile plugin /tmp/plugin_content.txt \
-              '{
-                model: $model,
-                max_tokens: 16384,
-                messages: [
-                  {
-                    role: "user",
-                    content: ($system + "\n\n---\n\n" + $rules + "\n\n---\n\n(onchainos source not available)\n\n---\n\n" + $plugin)
-                  }
-                ]
-              }' > /tmp/api_request.json
+              '$system + "\n\n---\n\n" + $rules + "\n\n---\n\n(onchainos source not available)\n\n---\n\n" + $plugin')
           fi
 
-          # Report total size
+          # Both Anthropic and OpenRouter accept the same messages format
+          jq -n \
+            --arg model "$MODEL" \
+            --argjson content "$USER_CONTENT" \
+            '{
+              model: $model,
+              max_tokens: 16384,
+              messages: [{ role: "user", content: $content }]
+            }' > /tmp/api_request.json
+
+          # Anthropic requires anthropic-version header and uses slightly different format,
+          # but the Messages API also accepts the OpenAI-style messages array.
+          # For Anthropic native API, we keep the same request body — it works.
+
           SIZE=$(wc -c < /tmp/api_request.json)
           echo "Total API request: ${SIZE} bytes"
 
-      # ── Step 5: Call Claude via OpenRouter API ─────────────────
-      - name: Call Claude API (via OpenRouter)
+      # ── Step 5: Call Claude API ─────────────────────────────────
+      - name: Call Claude API
         id: ai_review
         if: steps.build.outputs.skip != 'true'
         env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          HTTP_CODE=$(curl -s -o /tmp/api_response.json -w "%{http_code}" \
-            https://openrouter.ai/api/v1/chat/completions \
+          PROVIDER="${{ steps.provider.outputs.provider }}"
+          API_URL="${{ steps.provider.outputs.api_url }}"
+
+          if [ "$PROVIDER" = "openrouter" ]; then
+            AUTH_HEADER="Authorization: Bearer ${OPENROUTER_API_KEY}"
+          else
+            AUTH_HEADER="x-api-key: ${ANTHROPIC_API_KEY}"
+          fi
+
+          EXTRA_HEADERS=""
+          if [ "$PROVIDER" = "anthropic" ]; then
+            EXTRA_HEADERS="-H \"anthropic-version: 2023-06-01\""
+          fi
+
+          HTTP_CODE=$(eval curl -s -o /tmp/api_response.json -w '%{http_code}' \
+            "$API_URL" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${OPENROUTER_API_KEY}" \
+            -H "'$AUTH_HEADER'" \
+            $EXTRA_HEADERS \
             -d @/tmp/api_request.json)
 
-          echo "HTTP status: ${HTTP_CODE}"
+          echo "HTTP status: ${HTTP_CODE} (provider: ${PROVIDER})"
 
           if [ "$HTTP_CODE" != "200" ]; then
-            ERROR_MSG=$(jq -r '.error.message // "Unknown error"' /tmp/api_response.json 2>/dev/null || echo "HTTP ${HTTP_CODE}")
+            ERROR_MSG=$(jq -r '.error.message // .error // "Unknown error"' /tmp/api_response.json 2>/dev/null || echo "HTTP ${HTTP_CODE}")
             echo "AI review unavailable (${ERROR_MSG}). Human review required without AI assistance." > /tmp/ai_review.md
             echo "score=N/A" >> "$GITHUB_OUTPUT"
             echo "merge_rec=manual" >> "$GITHUB_OUTPUT"
+            echo "actual_model=unavailable" >> "$GITHUB_OUTPUT"
+            echo "cost=N/A" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # OpenRouter uses OpenAI-compatible response format
-          jq -r '.choices[0].message.content // "ERROR: No text in response"' /tmp/api_response.json > /tmp/ai_review.md
+          # Extract review text — different response format per provider
+          if [ "$PROVIDER" = "openrouter" ]; then
+            jq -r '.choices[0].message.content // "ERROR: No text in response"' /tmp/api_response.json > /tmp/ai_review.md
+            ACTUAL_MODEL=$(jq -r '.model // "unknown"' /tmp/api_response.json)
+            COST=$(jq -r '.usage.cost // "unknown"' /tmp/api_response.json)
+          else
+            jq -r '.content[0].text // "ERROR: No text in response"' /tmp/api_response.json > /tmp/ai_review.md
+            ACTUAL_MODEL=$(jq -r '.model // "unknown"' /tmp/api_response.json)
+            PROMPT_TOKENS=$(jq -r '.usage.input_tokens // 0' /tmp/api_response.json)
+            OUTPUT_TOKENS=$(jq -r '.usage.output_tokens // 0' /tmp/api_response.json)
+            COST="~${PROMPT_TOKENS}+${OUTPUT_TOKENS} tokens"
+          fi
 
-          # Extract model actually used and cost
-          ACTUAL_MODEL=$(jq -r '.model // "unknown"' /tmp/api_response.json)
-          COST=$(jq -r '.usage.cost // "unknown"' /tmp/api_response.json)
-          echo "Model used: ${ACTUAL_MODEL}, Cost: \$${COST}"
+          echo "Model used: ${ACTUAL_MODEL}, Cost: ${COST}"
           echo "actual_model=${ACTUAL_MODEL}" >> "$GITHUB_OUTPUT"
           echo "cost=${COST}" >> "$GITHUB_OUTPUT"
 
@@ -422,6 +447,7 @@ jobs:
             const hasOnchainos = '${{ steps.onchainos.outputs.available }}' === 'true';
             const actualModel = '${{ steps.ai_review.outputs.actual_model }}' || 'unknown';
             const cost = '${{ steps.ai_review.outputs.cost }}' || 'unknown';
+            const provider = '${{ steps.provider.outputs.provider }}';
 
             let recIcon, recText;
             if (mergeRec === 'ready') {
@@ -434,9 +460,10 @@ jobs:
               recIcon = '👤'; recText = 'Manual review required';
             }
 
+            const providerNote = provider === 'openrouter' ? 'via OpenRouter' : 'via Anthropic API';
             const contextNote = hasOnchainos
-              ? `🔗 Reviewed against **latest onchainos source code** (live from main branch) | Model: \`${actualModel}\` | Cost: $${cost}`
-              : `⚠️ onchainos source was unavailable — review based on AI knowledge only | Model: \`${actualModel}\``;
+              ? `🔗 Reviewed against **latest onchainos source code** (live from main branch) | Model: \`${actualModel}\` ${providerNote} | Cost: ${cost}`
+              : `⚠️ onchainos source was unavailable — review based on AI knowledge only | Model: \`${actualModel}\` ${providerNote}`;
 
             // Split into collapsible sections
             const sections = review.split(/(?=^## \d+\.)/m).filter(s => s.trim());
@@ -467,7 +494,7 @@ jobs:
               reportBody,
               '---',
               '',
-              '*Generated by Claude AI via OpenRouter — review the full report before approving.*'
+              `*Generated by Claude AI ${providerNote} — review the full report before approving.*`
             ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({

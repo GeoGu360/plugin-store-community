@@ -364,7 +364,7 @@ jobs:
                   entry["components"]["npm"] = {
                       "source_repo": yq(".build.source_repo"),
                       "source_commit": yq(".build.source_commit"),
-                      "install_command": f"npm install -g git+https://github.com/{yq('.build.source_repo')}@{yq('.build.source_commit')}"
+                      "install_command": f"npm install -g git+https://github.com/{yq('.build.source_repo')}#{yq('.build.source_commit')}"
                   }
               else:
                   # Compiled languages (rust, go): binary download from Release

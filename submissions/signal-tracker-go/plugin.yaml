@@ -1,0 +1,32 @@
+schema_version: 1
+name: signal-tracker-go
+alias: "Signal Tracker (Go)"
+version: "1.0.0"
+description: "Track smart money wallet activity and aggregated buy signals — Go implementation"
+author:
+  name: "Mingtao"
+  github: "ganlinux"
+license: MIT
+category: analytics
+tags:
+  - smart-money
+  - signals
+  - wallet-tracker
+  - go
+
+components:
+  skill:
+    dir: skills/signal-tracker-go
+  binary:
+    repo: ganlinux/signal-tracker-go
+    asset_pattern: "signal-tracker-go-{target}"
+    checksums_asset: checksums.txt
+
+build:
+  lang: go
+  source_repo: ganlinux/signal-tracker-go
+  source_commit: "736f0adf9e039355bd92cea91b8675f9b82e62c9"
+  binary_name: signal-tracker-go
+
+api_calls:
+  - "www.okx.com"

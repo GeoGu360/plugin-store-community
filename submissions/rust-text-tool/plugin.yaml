@@ -1,0 +1,24 @@
+schema_version: 1
+name: rust-text-tool
+version: "1.0.0"
+description: "A Rust-based text transformation CLI — uppercase, lowercase, reverse, base64, rot13"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags:
+  - rust
+  - text-processing
+
+components:
+  skill:
+    dir: skills/rust-text-tool
+
+build:
+  lang: rust
+  source_repo: "yz06276/rust-echo-cli"
+  source_commit: "9b6b89720df8971bdae1ff44de7a8923ea60bde0"
+  binary_name: rust-echo-cli
+
+api_calls: []

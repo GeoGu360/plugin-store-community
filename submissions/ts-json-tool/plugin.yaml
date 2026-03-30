@@ -1,0 +1,25 @@
+schema_version: 1
+name: ts-json-tool
+version: "1.0.0"
+description: "A TypeScript text echo CLI distributed via npm"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags:
+  - typescript
+  - text-processing
+
+components:
+  skill:
+    dir: skills/ts-json-tool
+
+build:
+  lang: typescript
+  source_repo: "yz06276/ts-echo-cli"
+  source_commit: "c771e3d6216fa3695f1d1553e1faea2c3be7f2e7"
+  binary_name: ts-echo-cli
+  main: src/index.js
+
+api_calls: []

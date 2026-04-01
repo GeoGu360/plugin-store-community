@@ -181,21 +181,32 @@ jobs:
             rm -rf "$DEST"
             mkdir -p "$DEST"
 
-            # Copy skill directories (Claude marketplace compatible structure)
-            for dir in skills scripts assets commands hooks references; do
-              if [ -d "/tmp/ext-${NAME}/${dir}" ]; then
-                cp -r "/tmp/ext-${NAME}/${dir}" "$DEST/"
-                echo "  Copied ${dir}/"
-              fi
-            done
+            # Copy skill content (Claude marketplace compatible structure)
+            # Claude marketplace repos use skills/<name>/ — flatten into DEST directly
+            SKILL_SUBDIR="/tmp/ext-${NAME}/skills/${NAME}"
+            if [ -d "$SKILL_SUBDIR" ]; then
+              # Claude marketplace format: copy contents of skills/<name>/ directly
+              cp -r "$SKILL_SUBDIR"/* "$DEST/" 2>/dev/null || true
+              echo "  Copied skills/${NAME}/* (Claude marketplace format, flattened)"
+            else
+              # Flat format: copy individual directories
+              for dir in scripts assets commands hooks references; do
+                if [ -d "/tmp/ext-${NAME}/${dir}" ]; then
+                  cp -r "/tmp/ext-${NAME}/${dir}" "$DEST/"
+                  echo "  Copied ${dir}/"
+                fi
+              done
+            fi
 
-            # Copy SKILL.md from root or skills/<name>/
-            if [ -f "/tmp/ext-${NAME}/SKILL.md" ]; then
-              cp "/tmp/ext-${NAME}/SKILL.md" "$DEST/SKILL.md"
-              echo "  Copied root SKILL.md"
-            elif [ -f "/tmp/ext-${NAME}/skill.md" ]; then
-              cp "/tmp/ext-${NAME}/skill.md" "$DEST/SKILL.md"
-              echo "  Copied root skill.md → SKILL.md"
+            # Copy SKILL.md if not already present (check multiple locations)
+            if [ ! -f "$DEST/SKILL.md" ]; then
+              if [ -f "/tmp/ext-${NAME}/SKILL.md" ]; then
+                cp "/tmp/ext-${NAME}/SKILL.md" "$DEST/SKILL.md"
+                echo "  Copied root SKILL.md"
+              elif [ -f "/tmp/ext-${NAME}/skill.md" ]; then
+                cp "/tmp/ext-${NAME}/skill.md" "$DEST/SKILL.md"
+                echo "  Copied root skill.md → SKILL.md"
+              fi
             fi
 
             # Copy .mcp.json if present

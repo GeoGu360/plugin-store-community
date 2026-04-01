@@ -1,0 +1,21 @@
+schema_version: 1
+name: test-echo-node
+version: "1.0.0"
+description: "Test echo CLI built in Node.js"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags: [test, node]
+components:
+  skill:
+    repo: "yz06276/test-echo-node"
+    commit: "727c732e5b9185a3d2a7e4bfb1e84e1393a7b38c"
+build:
+  lang: node
+  source_repo: "yz06276/test-echo-node"
+  source_commit: "727c732e5b9185a3d2a7e4bfb1e84e1393a7b38c"
+  binary_name: "test-echo-node"
+  main: src/index.js
+api_calls: []

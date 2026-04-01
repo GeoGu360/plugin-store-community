@@ -1,0 +1,28 @@
+schema_version: 1
+name: scan-live
+alias: "Chain Scanner"
+version: "1.0.0"
+description: "Chain Scanner Strategy v1.0 — Solana launchpad scanner + automated trading bot with safety filter and TP/SL exit system"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: trading-strategy
+tags:
+  - solana
+  - memepump
+  - scanner
+  - trading-bot
+
+components:
+  skill:
+    dir: skills/scan-live
+
+build:
+  lang: python
+  source_repo: "yz06276/scan-live"
+  source_commit: "8ca096253a7512478091582f98987185fee428ab"
+  binary_name: scan-live
+  main: scan_live.py
+
+api_calls: []

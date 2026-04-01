@@ -150,7 +150,7 @@ jobs:
   copy-external:
     name: Copy external skills
     needs: detect
-    if: needs.detect.outputs.has_external == 'true'
+    if: needs.detect.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -158,10 +158,38 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      # ── Copy Mode A: direct uploads (skills inside submissions/) ──
+      - name: Copy direct upload skills
+        run: |
+          for YAML in submissions/*/plugin.yaml; do
+            [ -f "$YAML" ] || continue
+            PLUGIN_NAME=$(basename "$(dirname "$YAML")")
+
+            SKILL_REPO=$(yq '.components.skill.repo // ""' "$YAML")
+            SKILL_DIR=$(yq '.components.skill.dir // ""' "$YAML")
+
+            # Mode A: no external repo, skill dir is local
+            if [ -z "$SKILL_REPO" ] && [ -n "$SKILL_DIR" ]; then
+              SRC="submissions/${PLUGIN_NAME}/${SKILL_DIR}"
+              DEST="skills/${PLUGIN_NAME}"
+              if [ -d "$SRC" ] && [ ! -d "$DEST" ]; then
+                mkdir -p "$DEST"
+                cp -r "$SRC"/* "$DEST/" 2>/dev/null || true
+                echo "Mode A: Copied ${SRC}/* → ${DEST}/"
+              fi
+            fi
+          done
+
       - name: Copy skills from external repos
         env:
           EXTERNAL_PLUGINS: ${{ needs.detect.outputs.external_plugins_json }}
         run: |
+          [ "${{ needs.detect.outputs.has_external }}" = "true" ] || { echo "No external plugins"; exit 0; }
           echo "$EXTERNAL_PLUGINS" | jq -r '.[] | @base64' | while read ENCODED; do
             PLUGIN=$(echo "$ENCODED" | base64 -d)
             NAME=$(echo "$PLUGIN" | jq -r '.name')
@@ -223,8 +251,8 @@ jobs:
           git config user.name "plugin-store-bot"
           git config user.email "bot@plugin-store.local"
           git add skills/
-          git diff --staged --quiet && echo "No external skills to copy" && exit 0
-          git commit -m "auto: copy external plugin skills to community repo"
+          git diff --staged --quiet && echo "No skills to copy" && exit 0
+          git commit -m "auto: copy plugin skills to community repo"
           git push
 
   # ═══════════════════════════════════════════════════════════════

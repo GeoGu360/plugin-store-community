@@ -1,0 +1,15 @@
+schema_version: 1
+name: smart-signal
+version: "1.0.0"
+description: "Smart Money Signal Strategy — tracks smart money, KOL, and whale buy signals with risk control"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: trading-strategy
+tags: [signal, smart-money, solana]
+components:
+  skill:
+    repo: "yz06276/smart-signal"
+    commit: "c17f8e5f9bdff3a04bb4ce716e11d123b9152bd2"
+api_calls: []

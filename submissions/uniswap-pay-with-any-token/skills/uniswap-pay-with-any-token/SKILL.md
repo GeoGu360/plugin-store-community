@@ -16,4 +16,10 @@ This skill is maintained by Uniswap Labs. Install the full version:
 npx skills add Uniswap/uniswap-ai
 ```
 
+Or install just this plugin:
+
+```
+claude plugin add @uniswap/uniswap-trading
+```
+
 Source: [uniswap-ai/packages/plugins/uniswap-trading/skills/pay-with-any-token](https://github.com/uniswap/uniswap-ai/tree/main/packages/plugins/uniswap-trading/skills/pay-with-any-token)

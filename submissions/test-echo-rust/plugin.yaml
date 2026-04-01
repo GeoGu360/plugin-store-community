@@ -1,0 +1,19 @@
+schema_version: 1
+name: test-echo-rust
+version: "1.0.0"
+description: "Test echo CLI built in Rust"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags: [test, rust]
+components:
+  skill:
+    dir: skills/test-echo-rust
+build:
+  lang: rust
+  source_repo: "yz06276/test-echo-rust"
+  source_commit: "960e677100cdc00a5d26c5761b2a6483f5760780"
+  binary_name: "test-echo-rust"
+api_calls: []

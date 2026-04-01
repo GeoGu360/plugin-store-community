@@ -452,9 +452,19 @@ jobs:
 
           if [ "$HTTP_CODE" != "200" ]; then
             ERROR_MSG=$(jq -r '.error.message // .error // "Unknown error"' /tmp/api_response.json 2>/dev/null || echo "HTTP ${HTTP_CODE}")
-            echo "AI review unavailable (${ERROR_MSG}). Human review required without AI assistance." > /tmp/ai_review.md
+            REQUEST_SIZE=$(wc -c < /tmp/api_request.json)
+            CONTENT_SIZE=$(wc -c < /tmp/plugin_content.txt)
+
+            # Detect context overflow errors
+            if echo "$ERROR_MSG" | grep -qiE "too many tokens|context length|token limit|max.*tokens|content.*large|request.*large"; then
+              echo "❌ **AI review FAILED: source code too large for full review** (request: ${REQUEST_SIZE} bytes, plugin content: ${CONTENT_SIZE} bytes). Error: ${ERROR_MSG}" > /tmp/ai_review.md
+              echo "merge_rec=blocked" >> "$GITHUB_OUTPUT"
+            else
+              echo "❌ **AI review FAILED** (HTTP ${HTTP_CODE}): ${ERROR_MSG}. Request size: ${REQUEST_SIZE} bytes, plugin content: ${CONTENT_SIZE} bytes. Full source code review could not be completed." > /tmp/ai_review.md
+              echo "merge_rec=manual" >> "$GITHUB_OUTPUT"
+            fi
+
             echo "score=N/A" >> "$GITHUB_OUTPUT"
-            echo "merge_rec=manual" >> "$GITHUB_OUTPUT"
             echo "actual_model=unavailable" >> "$GITHUB_OUTPUT"
             echo "cost=N/A" >> "$GITHUB_OUTPUT"
             exit 0
@@ -513,7 +523,9 @@ jobs:
             const provider = '${{ steps.provider.outputs.provider }}';
 
             let recIcon, recText;
-            if (mergeRec === 'ready') {
+            if (mergeRec === 'blocked') {
+              recIcon = '❌'; recText = 'BLOCKED — source code too large, full AI review could not be completed';
+            } else if (mergeRec === 'ready') {
               recIcon = '✅'; recText = 'Ready to merge';
             } else if (mergeRec === 'changes') {
               recIcon = '🔍'; recText = 'Needs changes';

@@ -237,6 +237,46 @@ jobs:
           fi
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
+          # ── Fetch external repo content (Mode B/C) ──────────────
+          # When plugin.yaml points to an external repo via components.skill.repo,
+          # the SKILL.md and source code live there, not in submissions/.
+          # Clone the external repo at the pinned commit so AI can review it.
+          EXTERNAL_DIR=""
+          SKILL_REPO=$(python3 -c "
+          import yaml
+          with open('${YAML_FILE}') as f:
+              data = yaml.safe_load(f)
+          skill = data.get('components', {}).get('skill', {})
+          repo = skill.get('repo', '')
+          commit = skill.get('commit', '')
+          if repo and repo != 'okx/plugin-store-community':
+              print(f'{repo} {commit}')
+          " 2>/dev/null || echo "")
+
+          if [ -n "$SKILL_REPO" ]; then
+            EXT_REPO=$(echo "$SKILL_REPO" | cut -d' ' -f1)
+            EXT_COMMIT=$(echo "$SKILL_REPO" | cut -d' ' -f2)
+            echo "External repo detected: ${EXT_REPO}@${EXT_COMMIT:-HEAD}"
+
+            EXTERNAL_DIR="/tmp/external-plugin"
+            rm -rf "$EXTERNAL_DIR"
+            if git clone --depth=100 "https://github.com/${EXT_REPO}.git" "$EXTERNAL_DIR" 2>/dev/null; then
+              if [ -n "$EXT_COMMIT" ]; then
+                cd "$EXTERNAL_DIR" && git checkout "$EXT_COMMIT" 2>/dev/null && cd - > /dev/null
+              fi
+              echo "External repo cloned successfully"
+
+              # Find SKILL.md in external repo if not found locally
+              if [ -z "$SKILL_FILE" ] || [ ! -f "$SKILL_FILE" ]; then
+                SKILL_FILE=$(find "$EXTERNAL_DIR" -name "SKILL.md" -o -name "skill.md" | head -1)
+                echo "SKILL.md found in external repo: ${SKILL_FILE}"
+              fi
+            else
+              echo "::warning::Failed to clone external repo ${EXT_REPO}"
+              EXTERNAL_DIR=""
+            fi
+          fi
+
           # Build plugin content
           {
             echo "# Plugin Submission to Review"
@@ -253,14 +293,49 @@ jobs:
               echo '```'
             fi
             echo ""
-            for ref in $(find "${PLUGIN_DIR}" -path "*/references/*.md" -type f 2>/dev/null); do
-              echo "## references/$(basename "$ref")"
-              echo '```markdown'
-              cat "$ref"
-              echo '```'
-              echo ""
+
+            # Include references from local submissions or external repo
+            for search_dir in "${PLUGIN_DIR}" "${EXTERNAL_DIR}"; do
+              [ -z "$search_dir" ] && continue
+              for ref in $(find "$search_dir" -path "*/references/*.md" -type f 2>/dev/null); do
+                echo "## references/$(basename "$ref")"
+                echo '```markdown'
+                cat "$ref"
+                echo '```'
+                echo ""
+              done
             done
 
+            # ── Include source code from external repo for security review ──
+            if [ -n "$EXTERNAL_DIR" ] && [ -d "$EXTERNAL_DIR" ]; then
+              echo ""
+              echo "# External Repository Source Code (for security review)"
+              echo "> Cloned from: ${EXT_REPO}@${EXT_COMMIT:-HEAD}"
+              echo ""
+              find "$EXTERNAL_DIR" -type f \
+                \( -name "*.rs" -o -name "*.go" -o -name "*.ts" -o -name "*.js" \
+                   -o -name "*.py" -o -name "*.toml" -o -name "*.json" -o -name "*.yaml" \
+                   -o -name "*.yml" -o -name "*.md" -o -name "*.html" \) \
+                ! -path "*/.git/*" ! -path "*/node_modules/*" ! -path "*/target/*" \
+                | sort | while read src_file; do
+                REL_PATH=$(echo "$src_file" | sed "s|${EXTERNAL_DIR}/||")
+                FILE_LINES=$(wc -l < "$src_file")
+                EXT="${src_file##*.}"
+                echo "## Source: ${REL_PATH} (${FILE_LINES} lines)"
+                echo "\`\`\`${EXT}"
+                if [ "$FILE_LINES" -gt 500 ]; then
+                  head -500 "$src_file"
+                  echo ""
+                  echo "... (truncated, ${FILE_LINES} total lines)"
+                else
+                  cat "$src_file"
+                fi
+                echo '```'
+                echo ""
+              done
+            fi
+
+            # ── Include local source code (Mode A: direct upload) ──
             BUILD_DIR=$(python3 -c "
           import yaml
           with open('${YAML_FILE}') as f:

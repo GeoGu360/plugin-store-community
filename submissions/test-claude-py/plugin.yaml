@@ -1,0 +1,17 @@
+schema_version: 1
+name: test-claude-py
+version: "1.0.0"
+description: "Test Claude marketplace plugin with Python scripts"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags: []
+
+components:
+  skill:
+    repo: "yz06276/test-claude-py"
+    commit: "6d39a53b5058bca6f1a8383d17a47dfa71e0fc56"
+
+api_calls: []

@@ -1,0 +1,21 @@
+schema_version: 1
+name: test-echo-python
+version: "1.0.0"
+description: "Test echo CLI built in Python"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags: [test, python]
+components:
+  skill:
+    repo: "yz06276/test-echo-python"
+    commit: "0d2b0a69163dba688f1946ad00cdd6e4545e5726"
+build:
+  lang: python
+  source_repo: "yz06276/test-echo-python"
+  source_commit: "0d2b0a69163dba688f1946ad00cdd6e4545e5726"
+  binary_name: "test-echo-python"
+  main: src/main.py
+api_calls: []

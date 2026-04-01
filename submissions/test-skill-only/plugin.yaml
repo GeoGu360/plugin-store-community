@@ -1,0 +1,14 @@
+schema_version: 1
+name: test-skill-only
+version: "1.0.0"
+description: "Test pure skill plugin — no binary, no build"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags: [test, skill-only]
+components:
+  skill:
+    dir: skills/test-skill-only
+api_calls: []

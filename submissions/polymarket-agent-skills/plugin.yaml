@@ -1,6 +1,5 @@
 schema_version: 1
 name: polymarket-agent-skills
-alias: "Polymarket 预测市场"
 version: "1.0.0"
 description: "Polymarket prediction market integration: trading, market data, WebSocket streaming, cross-chain bridge, and gasless transactions"
 author:

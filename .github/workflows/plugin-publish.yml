@@ -461,9 +461,6 @@ jobs:
               "link": yq('.link // "https://github.com/okx/plugin-store-community"')
           }
 
-          alias_val = yq('.alias // ""')
-          if alias_val:
-              entry["alias"] = alias_val
 
           lang = os.environ.get("BUILD_LANG", "")
           bin_name = os.environ.get("BUILD_BINARY_NAME", "")
@@ -552,7 +549,7 @@ jobs:
           OFFICIAL=$(echo "$CURRENT" | jq '[.plugins[] | select(.type != "community-developer" and .type != "community")]')
           COMMUNITY_NEW=$(cat /tmp/community_entries.json)
 
-          # Merge community entries: preserve alias/link/extra from existing registry
+          # Merge community entries: preserve link/extra from existing registry
           COMMUNITY_OLD=$(echo "$CURRENT" | jq '[.plugins[] | select(.type == "community-developer" or .type == "community")]')
           COMMUNITY=$(jq -n \
             --argjson old "$COMMUNITY_OLD" \
@@ -561,7 +558,6 @@ jobs:
               ($old[] | select(.name == $entry.name)) as $existing |
               if $existing then
                 $entry
-                + (if $existing.alias then {alias: $existing.alias} else {} end)
                 + (if $existing.link then {link: $existing.link} else {} end)
                 + (if $existing.extra then {extra: $existing.extra} else {} end)
               else $entry end

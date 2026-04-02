@@ -1,6 +1,5 @@
 schema_version: 1
 name: uniswap-ai
-alias: "Uniswap AI"
 version: "1.7.0"
 description: "AI-powered Uniswap developer tools: trading, hooks, drivers, and on-chain analysis across V2/V3/V4"
 author:

@@ -441,7 +441,7 @@ jobs:
               "author": {"name": yq(".author.name")},
               "category": yq(".category"),
               "tags": json.loads(yq(".tags | @json")),
-              "type": "community-developer",
+              "type": yq('.type // "community-developer"'),
               "components": {
                   "skill": {
                       "repo": "okx/plugin-store-community",
@@ -449,7 +449,7 @@ jobs:
                       "commit": os.environ["COMMIT_SHA"]
                   }
               },
-              "link": "https://github.com/okx/plugin-store-community"
+              "link": yq('.link // "https://github.com/okx/plugin-store-community"')
           }
 
           alias_val = yq('.alias // ""')

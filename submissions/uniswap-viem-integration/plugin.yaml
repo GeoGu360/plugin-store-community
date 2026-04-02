@@ -7,6 +7,7 @@ author:
   github: "wkoutre"
 license: MIT
 category: utility
+type: "dapp-official"
 tags:
   - viem
   - wagmi

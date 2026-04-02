@@ -7,6 +7,7 @@ author:
   github: "wkoutre"
 license: MIT
 category: defi-protocol
+type: "dapp-official"
 tags:
   - uniswap
   - payments

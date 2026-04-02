@@ -7,6 +7,7 @@ author:
   github: "wkoutre"
 license: MIT
 category: security
+type: "dapp-official"
 tags:
   - uniswap
   - v4-hooks

@@ -23,25 +23,12 @@ Aave V3 is the leading decentralized lending protocol with over $43B TVL. This s
 | Base | 8453 (default) |
 
 **Architecture:**
-- Write ops (supply, withdraw, borrow, repay, set-collateral, set-emode) → `aave-v3` binary encodes ABI calldata; after user confirmation, submits via `onchainos wallet contract-call`
-- Supply / Repay include an ERC-20 approve step (also via contract-call, after user confirmation) before the Pool call
+- Supply / Withdraw / Borrow / Repay / Set Collateral / Set E-Mode → `aave-v3` binary constructs ABI calldata, submits via `onchainos wallet contract-call` directly to Aave Pool
+- **Confirm with user before executing any `wallet contract-call` transaction** — show parameters and wait for explicit approval
+- Supply / Repay first approve the ERC-20 token via `wallet contract-call` before the Pool call
 - Claim Rewards → `onchainos defi collect --platform-id <id>` (platform-id from `defi positions`)
-- Read ops (health-factor, reserves, positions) → read-only `eth_call` via public RPC; no confirmation needed
+- Health Factor / Reserves / Positions → `aave-v3` binary makes read-only `eth_call` via public RPC
 - Pool address is always resolved at runtime via `PoolAddressesProvider.getPool()` — never hardcoded
-
----
-
-## Execution Flow for Write Operations
-
-For any operation that calls `onchainos wallet contract-call` (supply, withdraw, borrow, repay, set-collateral, set-emode, claim-rewards):
-
-1. Run with `--dry-run` first to preview the transaction
-2. **Ask user to confirm** the transaction details before executing on-chain
-3. Execute only after receiving explicit user approval
-4. Report the transaction hash and outcome
-
-Example:
-> "I'll supply 1000 USDC to Aave V3 on Base. This requires two transactions: approve USDC to the Pool, then call Pool.supply(). Shall I proceed?"
 
 ---
 
@@ -72,7 +59,8 @@ Please connect your wallet first: run `onchainos wallet login`
 | Check health factor | `aave-v3 health-factor` |
 | View positions | `aave-v3 positions` |
 | List reserve rates / APYs | `aave-v3 reserves` |
-| Enable/disable collateral | `aave-v3 set-collateral --asset <ADDRESS> --enable <true/false>` |
+| Enable collateral | `aave-v3 set-collateral --asset <ADDRESS> --enable` |
+| Disable collateral | `aave-v3 set-collateral --asset <ADDRESS>` |
 | Set E-Mode | `aave-v3 set-emode --category <ID>` |
 | Claim rewards | `aave-v3 claim-rewards` |
 
@@ -122,7 +110,7 @@ aave-v3 --chain 8453 --dry-run supply --asset USDC --amount 1000
 **What it does:**
 1. Resolves token contract address via `onchainos token search` (or uses address directly if provided)
 2. Resolves Pool address at runtime via `PoolAddressesProvider.getPool()`
-3. Run `--dry-run` to preview, then **ask user to confirm** before proceeding
+3. **Ask user to confirm** the supply amount and token before proceeding
 4. Approves token to Pool: `onchainos wallet contract-call` → ERC-20 `approve(pool, amount)`
 5. Deposits to Pool: `onchainos wallet contract-call` → `Pool.supply(asset, amount, onBehalfOf, 0)`
 
@@ -336,10 +324,12 @@ aave-v3 --chain 1 positions --from 0xSomeAddress
 
 **Usage:**
 ```bash
-# Dry-run first
-aave-v3 --chain 1 --dry-run set-collateral --asset 0x514910771AF9Ca656af840dff83E8264EcF986CA --enable false
-# Execute after confirmation
-aave-v3 --chain 1 set-collateral --asset 0x514910771AF9Ca656af840dff83E8264EcF986CA --enable false
+# Dry-run first (use --enable flag to enable, omit to disable)
+aave-v3 --chain 1 --dry-run set-collateral --asset 0x514910771AF9Ca656af840dff83E8264EcF986CA --enable
+# Disable collateral (no --enable flag)
+aave-v3 --chain 1 --dry-run set-collateral --asset 0x514910771AF9Ca656af840dff83E8264EcF986CA
+# Execute after user confirmation
+aave-v3 --chain 1 set-collateral --asset 0x514910771AF9Ca656af840dff83E8264EcF986CA --enable
 ```
 
 ---

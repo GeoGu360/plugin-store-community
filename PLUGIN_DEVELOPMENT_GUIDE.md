@@ -14,6 +14,7 @@
 6. [Step 4: Declare API Calls](#6-step-4-declare-api-calls)
 7. [Step 5: Local Validation](#7-step-5-local-validation)
 8. [Step 6: Submit via Pull Request](#8-step-6-submit-via-pull-request)
+8a. [Alternative: Submit Source Code Directly (Mode A)](#8a-alternative-submit-source-code-directly-mode-a)
 8b. [Alternative: Submit via External Repository (Mode B)](#8b-alternative-submit-via-external-repository-mode-b)
 8c. [Alternative: One-Click Import (Mode C)](#8c-alternative-one-click-import-mode-c)
 9. [What Happens After Submission](#9-what-happens-after-submission)
@@ -86,11 +87,6 @@ Choose your path before starting:
 ### Prerequisites
 
 - **Git** and a **GitHub account**
-- **plugin-store CLI** installed:
-  ```bash
-  # macOS / Linux
-  curl -fsSL https://raw.githubusercontent.com/okx/plugin-store/main/install-local.sh | bash
-  ```
 - **onchainos CLI** installed (for testing your commands):
   ```bash
   curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | bash
@@ -100,6 +96,8 @@ Choose your path before starting:
   export PATH="$HOME/.local/bin:$PATH"
   ```
 - Basic understanding of the blockchain/DeFi domain your plugin covers
+
+> **Note:** The plugin-store CLI is optional for local linting. Users install your finished plugin via `npx skills add okx/plugin-store-community --skill <plugin-name>` — no CLI installation required on their end.
 
 ### Key Rule
 
@@ -148,7 +146,6 @@ This is your plugin's manifest. It tells the Plugin Store what your plugin is, w
 ```yaml
 schema_version: 1
 name: sol-price-checker              # Lowercase, hyphens only, 2-40 chars
-alias: "Solana Price Checker"        # Optional: display name
 version: "1.0.0"                     # Semantic versioning (x.y.z)
 description: "Query real-time token prices on Solana with market data and trend analysis"
 author:
@@ -160,6 +157,8 @@ category: analytics                  # See categories below
 tags:
   - price
   - analytics
+type: "community-developer"          # Optional: e.g. "official", "dapp-official", "community-developer"
+link: "https://your-project.com"     # Optional: project homepage URL
 
 components:
   skill:
@@ -238,6 +237,8 @@ git rev-parse HEAD
 | `license` | Yes | SPDX identifier: MIT, Apache-2.0, GPL-3.0, etc. |
 | `category` | Yes | One of: `trading-strategy`, `defi-protocol`, `analytics`, `utility`, `security`, `wallet`, `nft` |
 | `tags` | No | Keywords for search |
+| `type` | No | Free-form string, e.g. `"official"`, `"dapp-official"`, `"community-developer"`. Defaults provided by CI. |
+| `link` | No | Project homepage URL. Displayed in the marketplace. |
 | `components.skill.dir` | Yes | Relative path to the directory containing SKILL.md |
 | `api_calls` | No | List of external API domains the plugin calls (reviewer reference; lint checks against this) |
 
@@ -375,7 +376,7 @@ Find the optimal swap route to enter a DeFi position.
 
 | Error | Cause | Resolution |
 |-------|-------|------------|
-| Binary connection failed | Server not running | Run `plugin-store install defi-yield-optimizer` |
+| Binary connection failed | Server not running | Run `npx skills add okx/plugin-store-community --skill defi-yield-optimizer` |
 | "Pool not found" | Invalid pool address | Verify the pool contract address |
 | "Insufficient balance" | Not enough tokens | Check balance with `onchainos portfolio all-balances` |
 
@@ -390,7 +391,7 @@ Find the optimal swap route to enter a DeFi position.
 1. **Be specific** — "Run `onchainos token search --query SOL --chain solana`" is better than "search for tokens"
 2. **Always include error handling** — The AI agent needs to know what to do when things fail
 3. **Use skill routing** — Tell the AI when to defer to other skills instead of trying to handle everything
-4. **Include pre-flight checks** — What conditions must be met before using your skill
+4. **Include pre-flight checks** — Your SKILL.md must be npx-compatible. Include dependency installation checks (onchainos, npm packages, pip packages, binaries) so the AI agent's pre-flight can handle them from a blank environment. Phase 6 CI will auto-inject missing dependency installs, but including your own is recommended.
 5. **Don't duplicate onchainos capabilities** — Your skill should orchestrate onchainos commands, not replace them
 
 ---
@@ -479,6 +480,47 @@ The PR template will guide you through the checklist.
 - Only modify files inside `submissions/your-plugin-name/`
 - Do not modify any other files (README.md, workflows, etc.)
 - The directory name must match the `name` field in plugin.yaml
+
+---
+
+## 8a. Alternative: Submit Source Code Directly (Mode A)
+
+You can include source code (Python scripts, shell scripts, etc.) directly inside `submissions/<name>/` — no external GitHub repo needed.
+
+```
+submissions/<your-plugin-name>/
+├── plugin.yaml
+├── skills/
+│   └── <your-plugin-name>/
+│       ├── SKILL.md
+│       └── scripts/          ← add your source files here
+│           ├── bot.py
+│           └── config.py
+├── LICENSE
+└── README.md
+```
+
+plugin.yaml for a directly-submitted plugin (no `build.source_repo` needed):
+```yaml
+schema_version: 1
+name: my-plugin
+version: "1.0.0"
+description: "What your plugin does"
+author:
+  name: "Your Name"
+  github: "your-username"
+license: MIT
+category: utility
+tags: [keywords]
+
+components:
+  skill:
+    dir: skills/my-plugin
+
+api_calls: []
+```
+
+After merge, CI generates `marketplace.json` which enables `npx skills add` discovery for your plugin.
 
 ---
 
@@ -591,6 +633,21 @@ Phase 3: AI Code Review (Claude)
   → Generates an 8-section review report
   → Posts report as a PR comment (collapsible sections)
   → Advisory only — does NOT block merge
+
+Phase 4: Build Check (if binary)
+  → Clones your source repo at the pinned commit SHA
+  → Compiles Rust/Go or validates TS/Node/Python packages
+  → Verifies the binary runs
+
+Phase 6: Generate Summary (requires maintainer approval)
+  → Generates SUMMARY.md and SKILL_SUMMARY.md for your plugin
+  → Scans and records all dependency requirements
+  → Auto-injects missing pre-flight dependency installs into SKILL.md
+  → Triggered by a maintainer; not automatic on every PR
+
+Phase 7: Publish
+  → Updates marketplace.json (enables npx skills add discovery)
+  → Tags release and updates registry
 ```
 
 ### Human Review (1-3 days)
@@ -606,9 +663,12 @@ A maintainer reviews:
 
 Your plugin is automatically:
 
-1. Added to `registry.json` in the main plugin-store repo
+1. Added to `marketplace.json` (enables npx discovery) and `registry.json`
 2. Tagged with `plugins/<your-plugin-name>@1.0.0`
-3. Available to all users via `plugin-store install <your-plugin-name>`
+3. Available to all users via:
+   ```bash
+   npx skills add okx/plugin-store-community --skill <your-plugin-name>
+   ```
 
 ---
 
@@ -654,7 +714,7 @@ If your update changes `api_calls`, the review will be more thorough. The AI rev
 
 - [ ] YAML frontmatter with `name` and `description`
 - [ ] Overview section (what does this skill do?)
-- [ ] Pre-flight checks (what's needed before use?)
+- [ ] Pre-flight checks — **must be npx-compatible**: include dependency installation instructions for onchainos, npm packages, pip packages, or binaries so the AI agent's pre-flight can run them from a blank environment
 - [ ] Commands section (each onchainos command with when/how/output)
 - [ ] Error handling table
 - [ ] Skill routing (when to defer to other skills)
@@ -1159,6 +1219,9 @@ For the full subcommand list, run `onchainos <command> --help` or see the [oncha
 ---
 
 ## 15. FAQ
+
+**Q: How do users install my plugin after it's published?**
+A: Users run `npx skills add okx/plugin-store-community --skill <your-plugin-name>`. This works from a blank environment — the AI agent's pre-flight handles dependency installation (onchainos, binaries, pip packages, npm packages). No plugin-store CLI install is required.
 
 **Q: Can I submit a plugin that calls external APIs directly?**
 A: No. All on-chain operations must go through onchainos CLI. If you need a capability that onchainos doesn't provide, open a feature request in the onchainos repo.

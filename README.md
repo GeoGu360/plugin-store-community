@@ -8,7 +8,13 @@
 
 # Plugin Store Community
 
-Submit your plugin to the [Plugin Store](https://github.com/okx/plugin-store) ecosystem in 5 minutes.
+Submit your plugin to the [Plugin Store](https://github.com/okx/plugin-store) ecosystem in 5 minutes. Users install plugins via:
+
+```bash
+npx skills add okx/plugin-store-community --skill <plugin-name>
+```
+
+No CLI installation required — works from a blank environment.
 
 ## Quick Start (5 steps)
 
@@ -62,10 +68,10 @@ Then edit `SKILL.md` — it teaches the AI agent how to use your plugin. The gen
 
 > **Important:** All on-chain interactions — wallet signing, transaction broadcasting, swap execution, contract calls — **must** use [onchainos CLI](https://github.com/okx/onchainos-skills). You are free to query external data sources (third-party DeFi APIs, market data providers, etc.), but any action that touches the blockchain must go through onchainos. Plugins that bypass onchainos for on-chain operations will be rejected.
 
-**Want to include source code (Python scripts, Rust/Go binaries)?** Two options:
+**Want to include source code (Python scripts, Rust/Go binaries)?** Three options:
 
-- **Option A:** Add files directly to `submissions/<name>/skills/<name>/scripts/`
-- **Option B:** Keep everything in your own repo, submit just a `plugin.yaml` pointer:
+- **Mode A:** Add source files directly to `submissions/<name>/skills/<name>/scripts/` — no external repo needed
+- **Mode B:** Keep everything in your own repo, submit just a `plugin.yaml` pointer:
   ```yaml
   components:
     skill:
@@ -73,11 +79,10 @@ Then edit `SKILL.md` — it teaches the AI agent how to use your plugin. The gen
       commit: "abc123..."                 # pinned commit
   ```
   Your repo can follow [Claude marketplace format](https://code.claude.com/docs/en/plugins-reference) — one repo, two ecosystems.
-
-**Already have a Claude marketplace repo?** Import with one command:
-```bash
-plugin-store import your-username/my-plugin
-```
+- **Mode C:** Already have a Claude marketplace repo? Import with one command:
+  ```bash
+  plugin-store import your-username/my-plugin
+  ```
 
 See the [Development Guide](./PLUGIN_DEVELOPMENT_GUIDE.md) for full details on all three submission modes.
 
@@ -108,12 +113,14 @@ Your PR automatically gets:
 ✅ Structure check (~30s)     — bot validates plugin.yaml + SKILL.md
 📋 AI code review (~2min)     — Claude reads your code and writes a report
 🔨 Build check (if binary)    — compiles Rust/Go source; validates TS/Node/Python packages
+📝 Summary generation         — maintainer triggers Phase 6: generates SUMMARY.md +
+                                SKILL_SUMMARY.md, scans dependencies, injects pre-flight
 👤 Human review (1-3 days)    — maintainer reads AI report, clicks Merge
 ```
 
 Once merged, your plugin is live:
 ```bash
-plugin-store install <your-plugin-name>
+npx skills add okx/plugin-store-community --skill <your-plugin-name>
 ```
 
 ---

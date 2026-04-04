@@ -17,7 +17,7 @@ Polygon (primary), Ethereum, Arbitrum, Base, Optimism, BNB, Solana (bridge sourc
 ## Install
 
 ```bash
-plugin-store install polymarket-agent-skills
+npx skills add okx/plugin-store-community --skill polymarket-agent-skills
 ```
 
 Or install via Claude Marketplace:

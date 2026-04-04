@@ -1,13 +1,8 @@
-# Phase 6: Generate SUMMARY.md + SKILL_SUMMARY.md (requires maintainer approval)
-#
-# After Lint, AI Review, and Build pass, a maintainer approves this step
-# to generate summaries via Claude. Results are:
-#   1. Pushed to the PR branch as new commits
-#   2. Posted as a PR comment for inline review
-#
-# Only runs when a maintainer approves the "summary-generation" environment.
+# Phase 4: AI Review + Summary Generation + Pre-flight Injection
+# Requires maintainer approval via "summary-generation" environment.
+# All Claude API calls are here — no automatic API spend on PR pushes.
 
-name: "Phase 6: Generate Summary"
+name: "Phase 4: Generate Summary"
 
 on:
   pull_request_target:
@@ -41,8 +36,8 @@ jobs:
           echo "plugin_name=${PLUGIN_NAME}" >> "$GITHUB_OUTPUT"
           echo "plugin_dir=submissions/${PLUGIN_NAME}" >> "$GITHUB_OUTPUT"
 
-  generate:
-    name: Generate summaries
+  review-and-generate:
+    name: AI Review + Summary
     needs: detect
     runs-on: ubuntu-latest
     environment: summary-generation
@@ -54,121 +49,77 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 1
 
+      - name: Checkout CI scripts from main
+        uses: actions/checkout@v4
+        with:
+          repository: okx/plugin-store-community
+          ref: main
+          path: _ci
+          sparse-checkout: .github/scripts
+
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: Resolve SKILL.md content
+      - name: Resolve SKILL.md
         id: skill
         run: |
           NAME="${{ needs.detect.outputs.plugin_name }}"
           YAML="${{ needs.detect.outputs.plugin_dir }}/plugin.yaml"
           SKILL_CONTENT=""
 
-          # Source 1: local submissions/<name>/ directory
           FOUND=$(find "submissions/${NAME}" -name "SKILL.md" -type f 2>/dev/null | head -1)
-          [ -n "$FOUND" ] && SKILL_CONTENT=$(cat "$FOUND") && echo "Source: local ($FOUND)"
+          [ -n "$FOUND" ] && SKILL_CONTENT=$(cat "$FOUND") && echo "Source: local"
 
-          # Source 2: external repo via plugin.yaml
           if [ -z "$SKILL_CONTENT" ] && [ -f "$YAML" ]; then
             EXT_REPO=$(yq '.components.skill.repo // ""' "$YAML")
             EXT_COMMIT=$(yq '.components.skill.commit // ""' "$YAML")
             if [ -n "$EXT_REPO" ] && [ "$EXT_REPO" != "okx/plugin-store-community" ]; then
               REF="${EXT_COMMIT:-main}"
-              echo "Fetching from: ${EXT_REPO}@${REF}"
               for path in "SKILL.md" "skills/${NAME}/SKILL.md"; do
-                SKILL_CONTENT=$(curl -sSL --max-time 10 \
-                  "https://raw.githubusercontent.com/${EXT_REPO}/${REF}/${path}" 2>/dev/null || true)
+                SKILL_CONTENT=$(curl -sSL --max-time 10 "https://raw.githubusercontent.com/${EXT_REPO}/${REF}/${path}" 2>/dev/null || true)
                 echo "$SKILL_CONTENT" | head -1 | grep -q "^---\|^#" && break
                 SKILL_CONTENT=""
               done
             fi
           fi
 
-          # Source 3: follow stub links to original repo
           if [ -z "$SKILL_CONTENT" ] || echo "$SKILL_CONTENT" | grep -q "Install the full version"; then
             STUB_REPO=$(echo "$SKILL_CONTENT" | grep -oE 'github\.com/[^/]+/[^/)]+' | head -1 | sed 's|github.com/||')
             if [ -n "$STUB_REPO" ]; then
-              echo "Following stub to: ${STUB_REPO}"
               PLUGIN_SHORT=$(echo "$NAME" | sed 's/^uniswap-//')
-              TREE=$(curl -sSL --max-time 15 \
-                "https://api.github.com/repos/${STUB_REPO}/git/trees/main?recursive=1" 2>/dev/null)
+              TREE=$(curl -sSL --max-time 15 "https://api.github.com/repos/${STUB_REPO}/git/trees/main?recursive=1" 2>/dev/null)
               SP=$(echo "$TREE" | jq -r ".tree[]? | select(.path | test(\"${PLUGIN_SHORT}.*SKILL\\.md$\"; \"i\")) | .path" 2>/dev/null | head -1)
               [ -z "$SP" ] && SP=$(echo "$TREE" | jq -r '.tree[]? | select(.path | test("SKILL\\.md$"; "i")) | .path' 2>/dev/null | head -1)
-              [ -n "$SP" ] && SKILL_CONTENT=$(curl -sSL --max-time 10 \
-                "https://raw.githubusercontent.com/${STUB_REPO}/main/${SP}" 2>/dev/null || true)
+              [ -n "$SP" ] && SKILL_CONTENT=$(curl -sSL --max-time 10 "https://raw.githubusercontent.com/${STUB_REPO}/main/${SP}" 2>/dev/null || true)
             fi
           fi
 
           if [ -z "$SKILL_CONTENT" ]; then
-            echo "No SKILL.md found"
             echo "found=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
           echo "$SKILL_CONTENT" > /tmp/skill_content.txt
           echo "found=true" >> "$GITHUB_OUTPUT"
-          echo "SKILL.md: $(wc -c < /tmp/skill_content.txt) bytes"
 
-      - name: Generate via Claude
+      # AI Code Review is handled by plugin-ai-review.yml (same approval gate)
+
+      # ── Step 1: Generate SUMMARY + SKILL_SUMMARY ──
+      - name: Generate summaries
         if: steps.skill.outputs.found == 'true'
         id: generate
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           NAME="${{ needs.detect.outputs.plugin_name }}"
-          YAML="${{ needs.detect.outputs.plugin_dir }}/plugin.yaml"
-          README="${{ needs.detect.outputs.plugin_dir }}/README.md"
+          PLUGIN_DIR="${{ needs.detect.outputs.plugin_dir }}"
 
-          YAML_CONTENT=$(cat "$YAML" 2>/dev/null || echo "")
-          README_CONTENT=$(cat "$README" 2>/dev/null || echo "")
+          python3 _ci/.github/scripts/gen-summary-prompt.py "$NAME" "$PLUGIN_DIR"
 
-          cat > /tmp/prompt.txt << PROMPT
-          You are generating documentation for plugin "${NAME}".
-
-Given the SKILL.md, README.md, and plugin.yaml below, generate TWO markdown files.
-
-Output exactly two sections separated by the line: ---SEPARATOR---
-
-FIRST section is SUMMARY.md:
-# ${NAME}
-<one sentence description>
-## Highlights
-- <feature 1>
-- <feature 2>
-...up to 8 highlights
-
-SECOND section is SKILL_SUMMARY.md:
-# ${NAME} — Skill Summary
-## Overview
-<one paragraph functional overview>
-## Usage
-<how to use/start, 1-3 sentences>
-## Commands
-<table or list of CLI commands. Write "This is a reference skill with no CLI commands." if none>
-## Triggers
-<when an AI agent should activate this skill, 1-2 sentences>
-
-=== INPUT ===
-
-plugin.yaml:
-${YAML_CONTENT}
-
-README.md:
-${README_CONTENT}
-
-SKILL.md:
-$(head -500 /tmp/skill_content.txt)
-PROMPT
-
-          jq -n \
-            --rawfile prompt /tmp/prompt.txt \
-            '{
-              model: "claude-sonnet-4-20250514",
-              max_tokens: 2048,
-              messages: [{role: "user", content: $prompt}]
-            }' > /tmp/req.json
+          jq -n --rawfile prompt /tmp/prompt.txt \
+            '{model: "claude-sonnet-4-20250514", max_tokens: 2048, messages: [{role: "user", content: $prompt}]}' \
+            > /tmp/req.json
 
           HTTP_CODE=$(curl -s -o /tmp/resp.json -w "%{http_code}" \
             https://api.anthropic.com/v1/messages \
@@ -177,83 +128,84 @@ PROMPT
             -H "anthropic-version: 2023-06-01" \
             -d @/tmp/req.json)
 
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "API error: HTTP $HTTP_CODE"
-            cat /tmp/resp.json
-            exit 1
+          if [ "$HTTP_CODE" = "200" ]; then
+            RESPONSE=$(jq -r '.content[0].text // ""' /tmp/resp.json)
+            echo "$RESPONSE" | sed -n '1,/---SEPARATOR---/p' | sed '/---SEPARATOR---/d' > "${PLUGIN_DIR}/SUMMARY.md"
+            echo "$RESPONSE" | sed -n '/---SEPARATOR---/,$p' | sed '1d' > "${PLUGIN_DIR}/SKILL_SUMMARY.md"
+            cp "${PLUGIN_DIR}/SUMMARY.md" /tmp/summary_md.txt
+            cp "${PLUGIN_DIR}/SKILL_SUMMARY.md" /tmp/skill_summary_md.txt
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Summary generation failed: HTTP $HTTP_CODE"
+            echo "done=false" >> "$GITHUB_OUTPUT"
           fi
 
-          RESPONSE=$(jq -r '.content[0].text // ""' /tmp/resp.json)
-          SUMMARY_MD=$(echo "$RESPONSE" | sed -n '1,/---SEPARATOR---/p' | sed '/---SEPARATOR---/d')
-          SKILL_SUMMARY_MD=$(echo "$RESPONSE" | sed -n '/---SEPARATOR---/,$p' | sed '1d')
+      # ── Step 3: Inject pre-flight dependencies ──
+      - name: Inject pre-flight
+        if: steps.skill.outputs.found == 'true'
+        id: preflight
+        run: |
+          python3 _ci/.github/scripts/inject-preflight.py \
+            "${{ needs.detect.outputs.plugin_name }}" \
+            "${{ needs.detect.outputs.plugin_dir }}"
+          [ -f /tmp/preflight_injected.txt ] && echo "patched=true" >> "$GITHUB_OUTPUT" || echo "patched=false" >> "$GITHUB_OUTPUT"
 
-          echo "$SUMMARY_MD" > "${{ needs.detect.outputs.plugin_dir }}/SUMMARY.md"
-          echo "$SKILL_SUMMARY_MD" > "${{ needs.detect.outputs.plugin_dir }}/SKILL_SUMMARY.md"
-
-          # Save for PR comment
-          echo "$SUMMARY_MD" > /tmp/summary_md.txt
-          echo "$SKILL_SUMMARY_MD" > /tmp/skill_summary_md.txt
-          echo "done=true" >> "$GITHUB_OUTPUT"
-
+      # ── Push all changes to PR ──
       - name: Push to PR branch
-        if: steps.generate.outputs.done == 'true'
+        if: steps.generate.outputs.done == 'true' || steps.preflight.outputs.patched == 'true'
         run: |
           git config user.name "plugin-store-bot"
           git config user.email "bot@plugin-store.local"
-          git add "${{ needs.detect.outputs.plugin_dir }}/SUMMARY.md" "${{ needs.detect.outputs.plugin_dir }}/SKILL_SUMMARY.md"
+          git add "${{ needs.detect.outputs.plugin_dir }}"
           git diff --staged --quiet && echo "No changes" && exit 0
-          git commit -m "auto: generate SUMMARY.md + SKILL_SUMMARY.md for ${{ needs.detect.outputs.plugin_name }}"
+          git commit -m "auto: summaries + pre-flight for ${{ needs.detect.outputs.plugin_name }}"
           git push
 
-      - name: Post summary to PR comment
-        if: always() && steps.generate.outputs.done == 'true'
+      # ── Post combined report to PR ──
+      - name: Post report to PR
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const pluginName = '${{ needs.detect.outputs.plugin_name }}';
 
-            let summaryMd = '', skillSummaryMd = '';
+            let summaryMd = '', skillSummaryMd = '', preflightMd = '';
             try { summaryMd = fs.readFileSync('/tmp/summary_md.txt', 'utf8'); } catch(e) {}
             try { skillSummaryMd = fs.readFileSync('/tmp/skill_summary_md.txt', 'utf8'); } catch(e) {}
+            try { preflightMd = fs.readFileSync('/tmp/preflight_injected.txt', 'utf8'); } catch(e) {}
 
-            const body = [
-              `## 📝 Phase 6: Generated Summaries for \`${pluginName}\``,
-              '',
-              '> Review the generated content below. If it looks good, merge the PR. If not, push corrections or request changes.',
-              '',
-              '---',
-              '',
-              '<details>',
-              '<summary><strong>SUMMARY.md</strong> (click to expand)</summary>',
-              '',
-              summaryMd,
-              '',
-              '</details>',
-              '',
-              '<details>',
-              '<summary><strong>SKILL_SUMMARY.md</strong> (click to expand)</summary>',
-              '',
-              skillSummaryMd,
-              '',
-              '</details>',
-              '',
-              '---',
-              `*Generated by Claude AI — files pushed to PR branch.*`
-            ].join('\n');
+            const sections = [];
+            sections.push(`## Phase 4: Summary + Pre-flight for \`${pluginName}\``);
+            sections.push('', '> Review below. AI Code Review is in a separate check.', '', '---', '');
+            if (summaryMd) {
+              sections.push('<details>', '<summary><strong>SUMMARY.md</strong></summary>', '', summaryMd, '', '</details>', '');
+            }
+            if (skillSummaryMd) {
+              sections.push('<details>', '<summary><strong>SKILL_SUMMARY.md</strong></summary>', '', skillSummaryMd, '', '</details>', '');
+            }
+            if (preflightMd) {
+              sections.push('<details open>', '<summary><strong>Auto-injected Pre-flight</strong></summary>', '', '```markdown', preflightMd, '```', '', '</details>', '');
+            }
+            sections.push('---', '*Generated by Plugin Store CI after maintainer approval.*');
 
+            const body = sections.join('\n');
             const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+              owner: context.repo.owner, repo: context.repo.repo,
               issue_number: ${{ github.event.pull_request.number }},
             });
-            const botComment = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('Phase 6: Generated Summaries')
-            );
-
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes('Phase 4:'));
             const params = { owner: context.repo.owner, repo: context.repo.repo, body };
-            if (botComment) {
-              await github.rest.issues.updateComment({ ...params, comment_id: botComment.id });
+            if (existing) {
+              await github.rest.issues.updateComment({ ...params, comment_id: existing.id });
             } else {
               await github.rest.issues.createComment({ ...params, issue_number: ${{ github.event.pull_request.number }} });
             }
+
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: ${{ github.event.pull_request.number }},
+                labels: ['ai-reviewed']
+              });
+            } catch(e) {}

@@ -5,7 +5,7 @@
 # SECURITY: pull_request_target runs the workflow from main (not from the PR),
 # so the workflow code itself is trusted. We only checkout PR code for linting.
 
-name: "Phase 2: Structure Validation"
+name: "Phase 1: Structure Validation"
 
 on:
   pull_request_target:
@@ -166,8 +166,8 @@ jobs:
 
           # Append name uniqueness result
           if [ "${{ steps.name_check.outputs.duplicate }}" = "true" ]; then
-            OUTPUT="${OUTPUT}
-  ❌ [E034] name '${{ needs.detect-plugin.outputs.plugin_name }}' already exists in registry"
+            DUPE_MSG="  E034: name '${{ needs.detect-plugin.outputs.plugin_name }}' already exists in registry"
+            OUTPUT=$(printf '%s\n%s' "$OUTPUT" "$DUPE_MSG")
             EXIT_CODE=1
           fi
 
@@ -235,14 +235,14 @@ jobs:
             const status = passed ? 'PASSED' : 'FAILED';
             const prNumber = ${{ github.event.pull_request.number }};
 
-            const body = `## ${icon} Phase 2: Structure Validation — ${status}\n\n\`\`\`\n${output}\n\`\`\`\n\n${passed ? '→ Proceeding to Phase 3: AI Code Review' : '→ Please fix the errors above and push again.'}`;
+            const body = `## ${icon} Phase 1: Structure Validation — ${status}\n\n\`\`\`\n${output}\n\`\`\`\n\n${passed ? '→ Proceeding to Phase 2: Build Verification' : '→ Please fix the errors above and push again.'}`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner, repo: context.repo.repo,
               issue_number: prNumber,
             });
             const botComment = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('Phase 2: Structure Validation')
+              c.user.type === 'Bot' && c.body.includes('Phase 1: Structure Validation')
             );
 
             const params = { owner: context.repo.owner, repo: context.repo.repo, body };

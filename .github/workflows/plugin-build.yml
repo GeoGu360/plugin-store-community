@@ -1,4 +1,4 @@
-# Phase 4: Build Verification
+# Phase 2: Build Verification
 #
 # When a plugin has a `build` section, this workflow:
 # 1. Clones the developer's source repo at the pinned commit SHA
@@ -12,7 +12,7 @@
 # - We clone at exact SHA → compile → publish our artifact
 # - Community repo stays small (no source code stored)
 
-name: "Phase 4: Build Verification"
+name: "Phase 2: Build Verification"
 
 on:
   pull_request_target:
@@ -448,7 +448,7 @@ jobs:
             const shortSha = sourceCommit.substring(0, 8);
 
             const body = [
-              `## 🔨 Phase 4: Build Verification — ${icon} ${status}`,
+              `## 🔨 Phase 2: Build Verification — ${icon} ${status}`,
               '',
               `> **Plugin**: \`${pluginName}\` | **Language**: \`${lang}\``,
               `> **Source**: [\`${sourceRepo}@${shortSha}\`](https://github.com/${sourceRepo}/tree/${sourceCommit})`,
@@ -471,7 +471,7 @@ jobs:
               issue_number: ${{ github.event.pull_request.number }},
             });
             const botComment = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('Phase 4: Build Verification')
+              c.user.type === 'Bot' && c.body.includes('Phase 2: Build Verification')
             );
 
             const params = { owner: context.repo.owner, repo: context.repo.repo, body };

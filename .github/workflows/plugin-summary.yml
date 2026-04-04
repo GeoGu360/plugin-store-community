@@ -1,12 +1,3 @@
-# Phase 6: Generate SUMMARY.md + SKILL_SUMMARY.md (requires maintainer approval)
-#
-# After Lint, AI Review, and Build pass, a maintainer approves this step
-# to generate summaries via Claude. Results are:
-#   1. Pushed to the PR branch as new commits
-#   2. Posted as a PR comment for inline review
-#
-# Only runs when a maintainer approves the "summary-generation" environment.
-
 name: "Phase 6: Generate Summary"
 
 on:
@@ -54,23 +45,32 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 1
 
+      - name: Checkout CI scripts from main
+        uses: actions/checkout@v4
+        with:
+          repository: okx/plugin-store-community
+          ref: main
+          path: _ci
+          sparse-checkout: .github/scripts
+
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: Resolve SKILL.md content
+      - name: Resolve SKILL.md
         id: skill
         run: |
           NAME="${{ needs.detect.outputs.plugin_name }}"
           YAML="${{ needs.detect.outputs.plugin_dir }}/plugin.yaml"
           SKILL_CONTENT=""
 
-          # Source 1: local submissions/<name>/ directory
           FOUND=$(find "submissions/${NAME}" -name "SKILL.md" -type f 2>/dev/null | head -1)
-          [ -n "$FOUND" ] && SKILL_CONTENT=$(cat "$FOUND") && echo "Source: local ($FOUND)"
+          if [ -n "$FOUND" ]; then
+            SKILL_CONTENT=$(cat "$FOUND")
+            echo "Source: local ($FOUND)"
+          fi
 
-          # Source 2: external repo via plugin.yaml
           if [ -z "$SKILL_CONTENT" ] && [ -f "$YAML" ]; then
             EXT_REPO=$(yq '.components.skill.repo // ""' "$YAML")
             EXT_COMMIT=$(yq '.components.skill.commit // ""' "$YAML")
@@ -78,26 +78,22 @@ jobs:
               REF="${EXT_COMMIT:-main}"
               echo "Fetching from: ${EXT_REPO}@${REF}"
               for path in "SKILL.md" "skills/${NAME}/SKILL.md"; do
-                SKILL_CONTENT=$(curl -sSL --max-time 10 \
-                  "https://raw.githubusercontent.com/${EXT_REPO}/${REF}/${path}" 2>/dev/null || true)
+                SKILL_CONTENT=$(curl -sSL --max-time 10 "https://raw.githubusercontent.com/${EXT_REPO}/${REF}/${path}" 2>/dev/null || true)
                 echo "$SKILL_CONTENT" | head -1 | grep -q "^---\|^#" && break
                 SKILL_CONTENT=""
               done
             fi
           fi
 
-          # Source 3: follow stub links to original repo
           if [ -z "$SKILL_CONTENT" ] || echo "$SKILL_CONTENT" | grep -q "Install the full version"; then
             STUB_REPO=$(echo "$SKILL_CONTENT" | grep -oE 'github\.com/[^/]+/[^/)]+' | head -1 | sed 's|github.com/||')
             if [ -n "$STUB_REPO" ]; then
               echo "Following stub to: ${STUB_REPO}"
               PLUGIN_SHORT=$(echo "$NAME" | sed 's/^uniswap-//')
-              TREE=$(curl -sSL --max-time 15 \
-                "https://api.github.com/repos/${STUB_REPO}/git/trees/main?recursive=1" 2>/dev/null)
+              TREE=$(curl -sSL --max-time 15 "https://api.github.com/repos/${STUB_REPO}/git/trees/main?recursive=1" 2>/dev/null)
               SP=$(echo "$TREE" | jq -r ".tree[]? | select(.path | test(\"${PLUGIN_SHORT}.*SKILL\\.md$\"; \"i\")) | .path" 2>/dev/null | head -1)
               [ -z "$SP" ] && SP=$(echo "$TREE" | jq -r '.tree[]? | select(.path | test("SKILL\\.md$"; "i")) | .path' 2>/dev/null | head -1)
-              [ -n "$SP" ] && SKILL_CONTENT=$(curl -sSL --max-time 10 \
-                "https://raw.githubusercontent.com/${STUB_REPO}/main/${SP}" 2>/dev/null || true)
+              [ -n "$SP" ] && SKILL_CONTENT=$(curl -sSL --max-time 10 "https://raw.githubusercontent.com/${STUB_REPO}/main/${SP}" 2>/dev/null || true)
             fi
           fi
 
@@ -111,64 +107,20 @@ jobs:
           echo "found=true" >> "$GITHUB_OUTPUT"
           echo "SKILL.md: $(wc -c < /tmp/skill_content.txt) bytes"
 
-      - name: Generate via Claude
+      - name: Generate SUMMARY + SKILL_SUMMARY via Claude
         if: steps.skill.outputs.found == 'true'
         id: generate
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           NAME="${{ needs.detect.outputs.plugin_name }}"
-          YAML="${{ needs.detect.outputs.plugin_dir }}/plugin.yaml"
-          README="${{ needs.detect.outputs.plugin_dir }}/README.md"
+          PLUGIN_DIR="${{ needs.detect.outputs.plugin_dir }}"
 
-          YAML_CONTENT=$(cat "$YAML" 2>/dev/null || echo "")
-          README_CONTENT=$(cat "$README" 2>/dev/null || echo "")
+          python3 _ci/.github/scripts/gen-summary-prompt.py "$NAME" "$PLUGIN_DIR"
 
-          cat > /tmp/prompt.txt << PROMPT
-          You are generating documentation for plugin "${NAME}".
-
-Given the SKILL.md, README.md, and plugin.yaml below, generate TWO markdown files.
-
-Output exactly two sections separated by the line: ---SEPARATOR---
-
-FIRST section is SUMMARY.md:
-# ${NAME}
-<one sentence description>
-## Highlights
-- <feature 1>
-- <feature 2>
-...up to 8 highlights
-
-SECOND section is SKILL_SUMMARY.md:
-# ${NAME} — Skill Summary
-## Overview
-<one paragraph functional overview>
-## Usage
-<how to use/start, 1-3 sentences>
-## Commands
-<table or list of CLI commands. Write "This is a reference skill with no CLI commands." if none>
-## Triggers
-<when an AI agent should activate this skill, 1-2 sentences>
-
-=== INPUT ===
-
-plugin.yaml:
-${YAML_CONTENT}
-
-README.md:
-${README_CONTENT}
-
-SKILL.md:
-$(head -500 /tmp/skill_content.txt)
-PROMPT
-
-          jq -n \
-            --rawfile prompt /tmp/prompt.txt \
-            '{
-              model: "claude-sonnet-4-20250514",
-              max_tokens: 2048,
-              messages: [{role: "user", content: $prompt}]
-            }' > /tmp/req.json
+          jq -n --rawfile prompt /tmp/prompt.txt \
+            '{model: "claude-sonnet-4-20250514", max_tokens: 2048, messages: [{role: "user", content: $prompt}]}' \
+            > /tmp/req.json
 
           HTTP_CODE=$(curl -s -o /tmp/resp.json -w "%{http_code}" \
             https://api.anthropic.com/v1/messages \
@@ -187,220 +139,20 @@ PROMPT
           SUMMARY_MD=$(echo "$RESPONSE" | sed -n '1,/---SEPARATOR---/p' | sed '/---SEPARATOR---/d')
           SKILL_SUMMARY_MD=$(echo "$RESPONSE" | sed -n '/---SEPARATOR---/,$p' | sed '1d')
 
-          echo "$SUMMARY_MD" > "${{ needs.detect.outputs.plugin_dir }}/SUMMARY.md"
-          echo "$SKILL_SUMMARY_MD" > "${{ needs.detect.outputs.plugin_dir }}/SKILL_SUMMARY.md"
-
-          # Save for PR comment
+          echo "$SUMMARY_MD" > "${PLUGIN_DIR}/SUMMARY.md"
+          echo "$SKILL_SUMMARY_MD" > "${PLUGIN_DIR}/SKILL_SUMMARY.md"
           echo "$SUMMARY_MD" > /tmp/summary_md.txt
           echo "$SKILL_SUMMARY_MD" > /tmp/skill_summary_md.txt
           echo "done=true" >> "$GITHUB_OUTPUT"
 
-      # ── Dependency scan + pre-flight injection ──────────────────
       - name: Scan dependencies and inject pre-flight
         if: steps.skill.outputs.found == 'true'
         id: preflight
         run: |
-          NAME="${{ needs.detect.outputs.plugin_name }}"
-          PLUGIN_DIR="${{ needs.detect.outputs.plugin_dir }}"
-          YAML="${PLUGIN_DIR}/plugin.yaml"
-
-          # Find the SKILL.md that will be installed (in skills/ dir)
-          SKILL_FILE=$(find "${PLUGIN_DIR}" -name "SKILL.md" -type f | head -1)
-          if [ -z "$SKILL_FILE" ]; then
-            echo "No SKILL.md to patch"
-            echo "patched=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "Scanning: $SKILL_FILE"
-          SKILL_TEXT=$(cat "$SKILL_FILE")
-          ALL_TEXT="$SKILL_TEXT"
-
-          # Also scan source code files for dependencies
-          for ext in py rs go ts js; do
-            for src in $(find "${PLUGIN_DIR}" -name "*.${ext}" -type f 2>/dev/null); do
-              ALL_TEXT="${ALL_TEXT}$(cat "$src")"
-            done
-          done
-
-          # ── Detect dependencies ──
-          NEEDS_ONCHAINOS=false
-          NEEDS_BINARY=false
-          NEEDS_PIP=false
-          NEEDS_NPM=false
-          BUILD_LANG=""
-
-          # onchainos dependency
-          if echo "$ALL_TEXT" | grep -qi "onchainos"; then
-            NEEDS_ONCHAINOS=true
-            echo "  Dependency detected: onchainos"
-          fi
-
-          # Build/binary dependency from plugin.yaml
-          if [ -f "$YAML" ]; then
-            BUILD_LANG=$(yq '.build.lang // ""' "$YAML" 2>/dev/null || echo "")
-            if [ -n "$BUILD_LANG" ]; then
-              case "$BUILD_LANG" in
-                rust|go) NEEDS_BINARY=true; echo "  Dependency detected: binary ($BUILD_LANG)" ;;
-                python) NEEDS_PIP=true; echo "  Dependency detected: pip ($BUILD_LANG)" ;;
-                typescript|node) NEEDS_NPM=true; echo "  Dependency detected: npm ($BUILD_LANG)" ;;
-              esac
-            fi
-          fi
-
-          if [ "$NEEDS_ONCHAINOS" = "false" ] && [ "$NEEDS_BINARY" = "false" ] && \
-             [ "$NEEDS_PIP" = "false" ] && [ "$NEEDS_NPM" = "false" ]; then
-            echo "  No dependencies detected, skipping pre-flight injection"
-            echo "patched=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # ── Check what the existing pre-flight already installs ──
-          HAS_ONCHAINOS_INSTALL=false
-          HAS_BINARY_INSTALL=false
-          HAS_PIP_INSTALL=false
-          HAS_NPM_INSTALL=false
-
-          if echo "$SKILL_TEXT" | grep -qiE "install.*onchainos|onchainos.*install|skills add.*onchainos|curl.*onchainos"; then
-            HAS_ONCHAINOS_INSTALL=true
-            echo "  Existing: onchainos install found"
-          fi
-          if echo "$SKILL_TEXT" | grep -qiE "curl.*releases/download|wget.*releases/download"; then
-            HAS_BINARY_INSTALL=true
-            echo "  Existing: binary install found"
-          fi
-          if echo "$SKILL_TEXT" | grep -qiE "pip install|pip3 install"; then
-            HAS_PIP_INSTALL=true
-            echo "  Existing: pip install found"
-          fi
-          if echo "$SKILL_TEXT" | grep -qiE "npm install -g|npx.*install"; then
-            HAS_NPM_INSTALL=true
-            echo "  Existing: npm install found"
-          fi
-
-          # ── Build the pre-flight block to inject ──
-          INJECT=""
-
-          if [ "$NEEDS_ONCHAINOS" = "true" ] && [ "$HAS_ONCHAINOS_INSTALL" = "false" ]; then
-            INJECT="${INJECT}
-### Install onchainos CLI (auto-injected)
-
-\`\`\`bash
-onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
-\`\`\`
-"
-            echo "  Injecting: onchainos install"
-          fi
-
-          if [ "$NEEDS_BINARY" = "true" ] && [ "$HAS_BINARY_INSTALL" = "false" ]; then
-            BIN_NAME=$(yq '.build.binary_name // ""' "$YAML" 2>/dev/null || echo "$NAME")
-            VERSION=$(yq '.version // "1.0.0"' "$YAML" 2>/dev/null || echo "1.0.0")
-            INJECT="${INJECT}
-### Install ${BIN_NAME} binary (auto-injected)
-
-\`\`\`bash
-if ! command -v ${BIN_NAME} >/dev/null 2>&1; then
-  OS=\$(uname -s | tr A-Z a-z)
-  ARCH=\$(uname -m)
-  case \"\${OS}_\${ARCH}\" in
-    darwin_arm64)  TARGET=\"aarch64-apple-darwin\" ;;
-    darwin_x86_64) TARGET=\"x86_64-apple-darwin\" ;;
-    linux_x86_64)  TARGET=\"x86_64-unknown-linux-gnu\" ;;
-    linux_aarch64) TARGET=\"aarch64-unknown-linux-gnu\" ;;
-  esac
-  curl -fsSL \"https://github.com/okx/plugin-store-community/releases/download/community/${NAME}@${VERSION}/${BIN_NAME}-\${TARGET}\" -o ~/.local/bin/${BIN_NAME}
-  chmod +x ~/.local/bin/${BIN_NAME}
-fi
-\`\`\`
-"
-            echo "  Injecting: binary install (${BIN_NAME})"
-          fi
-
-          if [ "$NEEDS_PIP" = "true" ] && [ "$HAS_PIP_INSTALL" = "false" ]; then
-            SRC_REPO=$(yq '.build.source_repo // ""' "$YAML" 2>/dev/null || echo "")
-            SRC_COMMIT=$(yq '.build.source_commit // ""' "$YAML" 2>/dev/null || echo "")
-            if [ -n "$SRC_REPO" ]; then
-              INJECT="${INJECT}
-### Install Python package (auto-injected)
-
-\`\`\`bash
-pip install git+https://github.com/${SRC_REPO}@${SRC_COMMIT} 2>/dev/null || pip3 install git+https://github.com/${SRC_REPO}@${SRC_COMMIT}
-\`\`\`
-"
-              echo "  Injecting: pip install (${SRC_REPO})"
-            fi
-          fi
-
-          if [ "$NEEDS_NPM" = "true" ] && [ "$HAS_NPM_INSTALL" = "false" ]; then
-            SRC_REPO=$(yq '.build.source_repo // ""' "$YAML" 2>/dev/null || echo "")
-            SRC_COMMIT=$(yq '.build.source_commit // ""' "$YAML" 2>/dev/null || echo "")
-            if [ -n "$SRC_REPO" ]; then
-              INJECT="${INJECT}
-### Install npm package (auto-injected)
-
-\`\`\`bash
-npm install -g git+https://github.com/${SRC_REPO}#${SRC_COMMIT}
-\`\`\`
-"
-              echo "  Injecting: npm install (${SRC_REPO})"
-            fi
-          fi
-
-          if [ -z "$INJECT" ]; then
-            echo "  All dependencies already covered in existing pre-flight"
-            echo "patched=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # ── Inject into SKILL.md ──
-          # Strategy: insert after frontmatter (---...---), before first heading
-          python3 << PYEOF
-import re
-
-with open("$SKILL_FILE") as f:
-    content = f.read()
-
-inject_block = """
-## Pre-flight Dependencies (auto-injected by Plugin Store CI)
-
-> Run once per session before first use. These checks ensure required tools are installed.
-$INJECT
----
-
-"""
-
-# Find insertion point: after frontmatter, before first # heading
-# Frontmatter is between first --- and second ---
-fm_pattern = re.compile(r'^---\n.*?\n---\n', re.DOTALL)
-fm_match = fm_pattern.match(content)
-
-if fm_match:
-    # Check if there's already an auto-injected block
-    if "auto-injected by Plugin Store CI" in content:
-        print("  Already has auto-injected pre-flight, replacing...")
-        content = re.sub(
-            r'## Pre-flight Dependencies \(auto-injected by Plugin Store CI\).*?---\n\n',
-            inject_block,
-            content,
-            flags=re.DOTALL
-        )
-    else:
-        # Insert after frontmatter
-        insert_pos = fm_match.end()
-        content = content[:insert_pos] + "\n" + inject_block + content[insert_pos:]
-else:
-    # No frontmatter, insert at top
-    content = inject_block + content
-
-with open("$SKILL_FILE", "w") as f:
-    f.write(content)
-
-print("  SKILL.md patched successfully")
-PYEOF
-
-          echo "patched=true" >> "$GITHUB_OUTPUT"
-          # Save patched content for PR comment
-          grep -A 50 "auto-injected by Plugin Store CI" "$SKILL_FILE" | head -60 > /tmp/preflight_injected.txt
+          python3 _ci/.github/scripts/inject-preflight.py \
+            "${{ needs.detect.outputs.plugin_name }}" \
+            "${{ needs.detect.outputs.plugin_dir }}"
+          [ -f /tmp/preflight_injected.txt ] && echo "patched=true" >> "$GITHUB_OUTPUT" || echo "patched=false" >> "$GITHUB_OUTPUT"
 
       - name: Push to PR branch
         if: steps.generate.outputs.done == 'true' || steps.preflight.outputs.patched == 'true'
@@ -409,81 +161,44 @@ PYEOF
           git config user.email "bot@plugin-store.local"
           git add "${{ needs.detect.outputs.plugin_dir }}"
           git diff --staged --quiet && echo "No changes" && exit 0
-          git commit -m "auto: generate summaries + inject pre-flight dependencies for ${{ needs.detect.outputs.plugin_name }}"
+          git commit -m "auto: generate summaries + inject pre-flight for ${{ needs.detect.outputs.plugin_name }}"
           git push
 
-      - name: Post summary to PR comment
-        if: always() && steps.generate.outputs.done == 'true'
+      - name: Post to PR comment
+        if: always() && (steps.generate.outputs.done == 'true' || steps.preflight.outputs.patched == 'true')
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const pluginName = '${{ needs.detect.outputs.plugin_name }}';
-
             let summaryMd = '', skillSummaryMd = '', preflightMd = '';
             try { summaryMd = fs.readFileSync('/tmp/summary_md.txt', 'utf8'); } catch(e) {}
             try { skillSummaryMd = fs.readFileSync('/tmp/skill_summary_md.txt', 'utf8'); } catch(e) {}
             try { preflightMd = fs.readFileSync('/tmp/preflight_injected.txt', 'utf8'); } catch(e) {}
 
             const sections = [];
-            sections.push(`## 📝 Phase 6: Generated Content for \`${pluginName}\``);
-            sections.push('');
-            sections.push('> Review the generated content below. If it looks good, merge the PR. If not, push corrections or request changes.');
-            sections.push('');
-            sections.push('---');
-            sections.push('');
-
+            sections.push(`## Phase 6: Generated Content for \`${pluginName}\``);
+            sections.push('', '> Review below. Merge if OK, request changes if not.', '', '---', '');
             if (summaryMd) {
-              sections.push('<details>');
-              sections.push('<summary><strong>SUMMARY.md</strong></summary>');
-              sections.push('');
-              sections.push(summaryMd);
-              sections.push('');
-              sections.push('</details>');
-              sections.push('');
+              sections.push('<details>', '<summary><strong>SUMMARY.md</strong></summary>', '', summaryMd, '', '</details>', '');
             }
-
             if (skillSummaryMd) {
-              sections.push('<details>');
-              sections.push('<summary><strong>SKILL_SUMMARY.md</strong></summary>');
-              sections.push('');
-              sections.push(skillSummaryMd);
-              sections.push('');
-              sections.push('</details>');
-              sections.push('');
+              sections.push('<details>', '<summary><strong>SKILL_SUMMARY.md</strong></summary>', '', skillSummaryMd, '', '</details>', '');
             }
-
             if (preflightMd) {
-              sections.push('<details open>');
-              sections.push('<summary><strong>⚙️ Auto-injected Pre-flight Dependencies</strong> (review carefully)</summary>');
-              sections.push('');
-              sections.push('The following dependency installation block was injected into SKILL.md:');
-              sections.push('');
-              sections.push('```markdown');
-              sections.push(preflightMd);
-              sections.push('```');
-              sections.push('');
-              sections.push('</details>');
-              sections.push('');
+              sections.push('<details open>', '<summary><strong>Auto-injected Pre-flight</strong></summary>', '', '```markdown', preflightMd, '```', '', '</details>', '');
             }
-
-            sections.push('---');
-            sections.push(`*Generated by Plugin Store CI — files pushed to PR branch.*`);
+            sections.push('---', '*Generated by Plugin Store CI.*');
 
             const body = sections.join('\n');
-
             const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+              owner: context.repo.owner, repo: context.repo.repo,
               issue_number: ${{ github.event.pull_request.number }},
             });
-            const botComment = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('Phase 6: Generated Summaries')
-            );
-
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes('Phase 6: Generated Content'));
             const params = { owner: context.repo.owner, repo: context.repo.repo, body };
-            if (botComment) {
-              await github.rest.issues.updateComment({ ...params, comment_id: botComment.id });
+            if (existing) {
+              await github.rest.issues.updateComment({ ...params, comment_id: existing.id });
             } else {
               await github.rest.issues.createComment({ ...params, issue_number: ${{ github.event.pull_request.number }} });
             }

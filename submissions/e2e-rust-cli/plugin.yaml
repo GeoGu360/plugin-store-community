@@ -1,0 +1,27 @@
+schema_version: 1
+name: e2e-rust-cli
+alias: "E2E Rust CLI"
+version: "1.0.0"
+description: "E2E test plugin: Rust echo CLI that prints arguments back"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags:
+  - e2e-test
+  - rust
+  - cli
+
+components:
+  skill:
+    dir: skills/e2e-rust-cli
+
+build:
+  lang: rust
+  source_repo: yz06276/e2e-rust-cli
+  source_commit: "b41beb45d4060ddf13d3aedfcaf7dd421009a771"
+  source_dir: "."
+  binary_name: e2e-rust-cli
+
+api_calls: []

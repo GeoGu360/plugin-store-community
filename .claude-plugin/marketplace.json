@@ -13,12 +13,12 @@
     },
     {
       "name": "meme-trench-scanner",
-      "description": "Meme Trench Scanner v1.0 \u2014 Solana Meme automated trading bot with 11 Launchpad coverage, 7-layer exit system, TraderSoul AI observation",
+      "description": "Meme Trench Scanner v1.0 — Solana Meme automated trading bot with 11 Launchpad coverage, 7-layer exit system, TraderSoul AI observation",
       "source": "./skills/meme-trench-scanner"
     },
     {
       "name": "okx-buildx-hackathon-agent-track",
-      "description": "AI Hackathon participation guide \u2014 registration, wallet setup, project building, submission to Moltbook, voting, and scoring. Apr 1-15, 2026. $14,000 USDT in prizes.",
+      "description": "AI Hackathon participation guide — registration, wallet setup, project building, submission to Moltbook, voting, and scoring. Apr 1-15, 2026. $14,000 USDT in prizes.",
       "source": "./skills/okx-buildx-hackathon-agent-track"
     },
     {
@@ -28,12 +28,12 @@
     },
     {
       "name": "smart-money-signal-copy-trade",
-      "description": "Smart Money Signal Copy Trade v1.0 \u2014 Smart money signal tracker with cost-aware TP, 15-check safety, 7-layer exit system",
+      "description": "Smart Money Signal Copy Trade v1.0 — Smart money signal tracker with cost-aware TP, 15-check safety, 7-layer exit system",
       "source": "./skills/smart-money-signal-copy-trade"
     },
     {
       "name": "top-rank-tokens-sniper",
-      "description": "Top Rank Tokens Sniper v1.0 \u2014 OKX ranking leaderboard sniper with momentum scoring, 3-level safety, 6-layer exit system",
+      "description": "Top Rank Tokens Sniper v1.0 — OKX ranking leaderboard sniper with momentum scoring, 3-level safety, 6-layer exit system",
       "source": "./skills/top-rank-tokens-sniper"
     },
     {

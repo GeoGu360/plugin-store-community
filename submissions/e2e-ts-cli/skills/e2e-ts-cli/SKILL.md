@@ -1,28 +1,44 @@
 ---
 name: e2e-ts-cli
-description: TypeScript echo CLI
-version: "1.0.0"
-author: yz06276
-tags: [e2e-test]
----
-
-
-## Pre-flight Dependencies (auto-injected by Plugin Store CI)
-
-> Run once per session before first use. These checks ensure required tools are installed.
-
-### Install npm package (auto-injected)
-
-```bash
-npm install -g git+https://github.com/yz06276/e2e-ts-cli#37403981deeeb6e836191daaecf38606ff9e430b
-```
-
+description: "TypeScript CLI with onchainos price query"
+version: "1.1.0"
+author: "yz06276"
+tags: [e2e-test, typescript, onchainos]
 ---
 
 # e2e-ts-cli
+
+## Overview
+
+TypeScript CLI that echoes arguments and queries token prices via onchainos.
+
+## Pre-flight Checks
+
+1. `e2e-ts-cli` binary is installed
+2. `onchainos` CLI is installed and authenticated: `onchainos wallet status`
+
 ## Commands
-### Echo
+
+### Echo Arguments
+
 ```bash
-e2e-ts-cli hello
+e2e-ts-cli hello world
 ```
-**When to use**: Test. **Output**: hello
+
+**When to use**: Test basic echo. **Output**: "hello world"
+
+### Query ETH Price (via onchainos)
+
+```bash
+e2e-ts-cli price ethereum 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+```
+
+**When to use**: Query ETH price. **Output**: JSON with ETH price.
+
+### Query BTC Price (via onchainos directly)
+
+```bash
+onchainos market price --address "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599" --chain ethereum
+```
+
+**When to use**: Query WBTC price. **Output**: JSON with WBTC price.

@@ -23,8 +23,8 @@ components:
 build:
   lang: rust
   binary_name: mellow-lrt
-  source_repo: skylavis-sky/onchainos-plugins
-  source_commit: "2996a11b66f91be70ca5b9406161ad1db82c4518"
+  source_repo: GeoGu360/onchainos-plugins
+  source_commit: "44ab2e99d084b29f941a49b73d5ea9882564b095"
   source_dir: mellow-lrt
 
 api_calls:

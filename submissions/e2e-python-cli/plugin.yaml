@@ -1,0 +1,10 @@
+schema_version: 1
+name: e2e-python-cli
+version: "1.0.0"
+description: "E2E test plugin: Python scripts bundled with skill"
+author: {name: "yz06276", github: "yz06276"}
+license: MIT
+category: utility
+tags: [e2e-test, python, cli]
+components: {skill: {dir: skills/e2e-python-cli}}
+api_calls: []

@@ -1,0 +1,21 @@
+schema_version: 1
+name: e2e-node-cli
+version: "1.0.0"
+description: "E2E test plugin: Node.js echo CLI"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags: [e2e-test, node, cli]
+components:
+  skill:
+    dir: skills/e2e-node-cli
+build:
+  lang: node
+  source_repo: yz06276/e2e-node-cli
+  source_commit: "d5d2c600c06d427368c21b9ed36ca2acf2e88793"
+  source_dir: "."
+  binary_name: e2e-node-cli
+  main: src/index.js
+api_calls: []

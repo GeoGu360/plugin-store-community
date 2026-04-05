@@ -20,9 +20,11 @@ components:
 build:
   lang: rust
   binary_name: marinade
-  source_repo: skylavis-sky/onchainos-plugins
+  source_repo: GeoGu360/onchainos-plugins
   source_commit: "897ab92befd88768dffc775b81b18e4864714c12"
   source_dir: marinade
+  script: |
+    cargo build --release
 
 api_calls:
   - "https://api.marinade.finance/msol/price_sol"

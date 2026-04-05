@@ -22,7 +22,7 @@ build:
   lang: rust
   binary_name: rocket-pool
   source_repo: GeoGu360/onchainos-plugins
-  source_commit: "d59d785e14bdc7ac5280fbee85c40a8c71cb6dd6"
+  source_commit: "af679d51862c78fe5d28c34a13cd65fc8ee36267"
   source_dir: rocket-pool
 
 api_calls:

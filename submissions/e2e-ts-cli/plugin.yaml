@@ -1,0 +1,11 @@
+schema_version: 1
+name: e2e-ts-cli
+version: "1.0.0"
+description: "E2E test plugin: TypeScript echo CLI"
+author: {name: "yz06276", github: "yz06276"}
+license: MIT
+category: utility
+tags: [e2e-test, typescript, cli]
+components: {skill: {dir: skills/e2e-ts-cli}}
+build: {lang: typescript, source_repo: yz06276/e2e-ts-cli, source_commit: "37403981deeeb6e836191daaecf38606ff9e430b", source_dir: ".", binary_name: e2e-ts-cli, main: src/index.ts}
+api_calls: []

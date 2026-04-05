@@ -13,7 +13,7 @@
     },
     {
       "name": "e2e-node-cli",
-      "description": "E2E test plugin: Node.js echo CLI",
+      "description": "E2E test: Node.js CLI with onchainos price query",
       "source": "./skills/e2e-node-cli"
     },
     {

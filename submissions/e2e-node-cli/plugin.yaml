@@ -1,11 +1,17 @@
 schema_version: 1
 name: e2e-node-cli
-version: "1.0.1"
-description: "E2E test plugin: Node.js echo CLI"
+version: "1.1.0"
+description: "E2E test: Node.js CLI with onchainos price query"
 author: {name: "yz06276", github: "yz06276"}
 license: MIT
 category: utility
 tags: [e2e-test, node, cli]
 components: {skill: {dir: skills/e2e-node-cli}}
-build: {lang: node, source_repo: yz06276/e2e-node-cli, source_commit: "d5d2c600c06d427368c21b9ed36ca2acf2e88793", source_dir: ".", binary_name: e2e-node-cli, main: src/index.js}
+build:
+  lang: node
+  source_repo: yz06276/e2e-node-cli
+  source_commit: "b53a9eaa24ece530d5285cf755a2cee8c7d53a51"
+  source_dir: "."
+  binary_name: e2e-node-cli
+  main: src/index.js
 api_calls: []

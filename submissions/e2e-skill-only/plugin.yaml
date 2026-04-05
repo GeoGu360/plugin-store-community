@@ -1,0 +1,14 @@
+schema_version: 1
+name: e2e-skill-only
+version: "1.0.0"
+description: "E2E test plugin: pure SKILL.md with no binary or scripts"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags: [e2e-test, skill-only]
+components:
+  skill:
+    dir: skills/e2e-skill-only
+api_calls: []

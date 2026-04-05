@@ -20,8 +20,8 @@ components:
 build:
   lang: rust
   binary_name: kamino-liquidity
-  source_repo: skylavis-sky/onchainos-plugins
-  source_commit: "982f78938505e591eea4b52e12e0ae72cba9a048"
+  source_repo: GeoGu360/onchainos-plugins
+  source_commit: "4a305c505ee9c685d3d53154593fcf3e17cc2af1"
   source_dir: kamino-liquidity
 
 api_calls:

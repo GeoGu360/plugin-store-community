@@ -21,7 +21,7 @@ components:
 build:
   lang: rust
   binary_name: stader
-  source_repo: skylavis-sky/onchainos-plugins
+  source_repo: GeoGu360/onchainos-plugins
   source_commit: "dc2e8f9d62acde485c217522b64ac7938e6a2f6b"
   source_dir: stader
 

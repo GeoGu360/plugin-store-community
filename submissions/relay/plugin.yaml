@@ -5,7 +5,7 @@ description: "Cross-chain bridge and swap via Relay protocol — supports 74+ EV
 author:
   name: "GeoGu360"
   github: "GeoGu360"
-category: bridge
+category: defi-protocol
 tags:
   - bridge
   - cross-chain

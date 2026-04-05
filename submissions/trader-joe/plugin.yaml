@@ -21,7 +21,7 @@ components:
 build:
   lang: rust
   binary_name: trader-joe
-  source_repo: skylavis-sky/onchainos-plugins
+  source_repo: GeoGu360/onchainos-plugins
   source_commit: "b9810324bf40f198559556a63d8c3b0f2e59736a"
   source_dir: trader-joe
 

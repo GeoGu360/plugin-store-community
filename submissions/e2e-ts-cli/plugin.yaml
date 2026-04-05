@@ -10,7 +10,7 @@ components: {skill: {dir: skills/e2e-ts-cli}}
 build:
   lang: typescript
   source_repo: yz06276/e2e-ts-cli
-  source_commit: "a0a36aac19a098ed0082b3542a1fb0e1420b9b3c"
+  source_commit: "9cb0d2ca396e768699a1b456ff39e6b183e32b7e"
   source_dir: "."
   binary_name: e2e-ts-cli
   main: src/index.ts

@@ -1,0 +1,29 @@
+schema_version: 1
+name: eigencloud
+version: "0.1.0"
+description: "EigenLayer AVS restaking plugin — stake LSTs, delegate to operators, manage withdrawals on Ethereum mainnet"
+author:
+  name: "GeoGu360"
+  github: "GeoGu360"
+category: defi-protocol
+tags:
+  - restaking
+  - eigenlayer
+  - avs
+  - liquid-staking
+  - delegation
+license: MIT
+
+components:
+  skill:
+    dir: skills/eigencloud
+
+build:
+  lang: rust
+  binary_name: eigencloud
+  source_repo: GeoGu360/onchainos-plugins
+  source_commit: "ba847818a63d30dcffe578bf294b81245c7cac93"
+  source_dir: eigencloud
+
+api_calls:
+  - "https://ethereum.publicnode.com"

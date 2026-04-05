@@ -1,0 +1,15 @@
+schema_version: 1
+name: e2e-stub-external
+version: "1.0.0"
+description: "E2E test: external stub from Claude marketplace format"
+author:
+  name: "yz06276"
+  github: "yz06276"
+license: MIT
+category: utility
+tags: [e2e-test, external, stub]
+components:
+  skill:
+    repo: "yz06276/e2e-stub-external"
+    commit: "737af28cc7ed68eaba56087defe9d620ad85761f"
+api_calls: []

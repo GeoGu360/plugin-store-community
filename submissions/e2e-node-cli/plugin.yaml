@@ -10,7 +10,7 @@ components: {skill: {dir: skills/e2e-node-cli}}
 build:
   lang: node
   source_repo: yz06276/e2e-node-cli
-  source_commit: "b53a9eaa24ece530d5285cf755a2cee8c7d53a51"
+  source_commit: "3b2ea1fe0cdef4cd350ec90ada063c94af686d2f"
   source_dir: "."
   binary_name: e2e-node-cli
   main: src/index.js

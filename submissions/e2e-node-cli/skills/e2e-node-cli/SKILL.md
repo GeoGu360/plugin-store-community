@@ -20,7 +20,7 @@ onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/
 ### Install npm package (auto-injected)
 
 ```bash
-npm install -g git+https://github.com/yz06276/e2e-node-cli#b53a9eaa24ece530d5285cf755a2cee8c7d53a51
+npm install -g git+https://github.com/yz06276/e2e-node-cli#3b2ea1fe0cdef4cd350ec90ada063c94af686d2f
 ```
 
 ---
@@ -29,36 +29,28 @@ npm install -g git+https://github.com/yz06276/e2e-node-cli#b53a9eaa24ece530d5285
 # e2e-node-cli
 
 ## Overview
-
 Node.js CLI that echoes arguments and queries token prices via onchainos.
 
 ## Pre-flight Checks
-
-1. `e2e-node-cli` binary is installed
-2. `onchainos` CLI is installed and authenticated: `onchainos wallet status`
+1. `e2e-node-cli` is installed (via npm)
+2. `onchainos` CLI is installed: `onchainos wallet status`
 
 ## Commands
 
 ### Echo Arguments
-
 ```bash
 e2e-node-cli hello world
 ```
+**When to use**: Test echo. **Output**: "hello world"
 
-**When to use**: Test basic echo. **Output**: "hello world"
-
-### Query ETH Price (via onchainos)
-
+### Query ETH Price (via CLI)
 ```bash
 e2e-node-cli price ethereum 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 ```
-
-**When to use**: Query ETH price. **Output**: JSON with ETH price.
+**When to use**: Query ETH price. **Output**: JSON with price.
 
 ### Query BTC Price (via onchainos directly)
-
 ```bash
 onchainos market price --address "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599" --chain ethereum
 ```
-
-**When to use**: Query WBTC price. **Output**: JSON with WBTC price.
+**When to use**: Query WBTC price.

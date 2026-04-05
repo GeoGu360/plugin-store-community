@@ -2,17 +2,17 @@
 # e2e-node-cli -- Skill Summary
 
 ## Overview
-This skill provides a Node.js command-line interface that combines basic argument echoing with cryptocurrency price querying capabilities. It leverages the onchainos service to fetch real-time token prices for Ethereum and other cryptocurrencies, making it useful for both testing scenarios and practical price lookups.
+This skill provides a Node.js command-line interface for testing argument processing and querying cryptocurrency token prices. It combines basic echo functionality with onchainos integration to retrieve real-time price data for various tokens including Ethereum and Bitcoin, making it useful for end-to-end testing scenarios and price monitoring workflows.
 
 ## Usage
-Install the e2e-node-cli binary and ensure onchainos CLI is authenticated with `onchainos wallet status`. Use the CLI commands to echo text or query cryptocurrency prices with JSON output.
+Install the CLI via npm and ensure onchainos is available with `onchainos wallet status`. Use the tool to echo test arguments or query cryptocurrency prices through the integrated onchainos system.
 
 ## Commands
-| Command | Purpose | Example |
-|---------|---------|---------|
-| `e2e-node-cli <args>` | Echo arguments | `e2e-node-cli hello world` |
-| `e2e-node-cli price ethereum <address>` | Query ETH price | `e2e-node-cli price ethereum 0xeeee...` |
-| `onchainos market price --address <addr> --chain ethereum` | Query token price directly | `onchainos market price --address "0x2260..." --chain ethereum` |
+| Command | Description | Example |
+|---------|-------------|---------|
+| `e2e-node-cli <args>` | Echo the provided arguments | `e2e-node-cli hello world` |
+| `e2e-node-cli price <token> <address>` | Query token price via onchainos | `e2e-node-cli price ethereum 0xeeee...` |
+| `onchainos market price --address <addr> --chain <chain>` | Direct onchainos price query | `onchainos market price --address "0x2260..." --chain ethereum` |
 
 ## Triggers
-An AI agent should activate this skill when users need to test CLI functionality with simple echo operations or when they request current cryptocurrency prices, particularly for Ethereum or Bitcoin/WBTC tokens.
+An AI agent should activate this skill when users need to test CLI argument processing, query cryptocurrency token prices, or perform end-to-end testing of Node.js applications with price data integration.

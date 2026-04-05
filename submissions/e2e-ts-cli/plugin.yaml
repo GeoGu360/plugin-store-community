@@ -1,11 +1,17 @@
 schema_version: 1
 name: e2e-ts-cli
-version: "1.0.1"
-description: "E2E test plugin: TypeScript echo CLI"
+version: "1.1.0"
+description: "E2E test: TypeScript CLI with onchainos price query"
 author: {name: "yz06276", github: "yz06276"}
 license: MIT
 category: utility
 tags: [e2e-test, typescript, cli]
 components: {skill: {dir: skills/e2e-ts-cli}}
-build: {lang: typescript, source_repo: yz06276/e2e-ts-cli, source_commit: "37403981deeeb6e836191daaecf38606ff9e430b", source_dir: ".", binary_name: e2e-ts-cli, main: src/index.ts}
+build:
+  lang: typescript
+  source_repo: yz06276/e2e-ts-cli
+  source_commit: "a0a36aac19a098ed0082b3542a1fb0e1420b9b3c"
+  source_dir: "."
+  binary_name: e2e-ts-cli
+  main: src/index.ts
 api_calls: []

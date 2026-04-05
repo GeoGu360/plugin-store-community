@@ -1,13 +1,13 @@
 # e2e-ts-cli
-A TypeScript-based echo CLI tool designed for end-to-end testing purposes.
+A TypeScript CLI tool that provides argument echoing and cryptocurrency price querying capabilities via onchainos integration.
 
 ## Highlights
-- Simple echo functionality for testing CLI interactions
-- Built with TypeScript for type safety and reliability
-- Lightweight utility designed specifically for E2E test scenarios
-- Clean command-line interface with straightforward usage
-- MIT licensed open-source tool
-- Easy integration into testing workflows
-- Minimal dependencies for fast execution
-- Cross-platform compatibility through TypeScript/Node.js
+- Echo command line arguments for testing purposes
+- Query Ethereum (ETH) token prices through onchainos integration
+- Direct WBTC price queries via onchainos CLI
+- Built with TypeScript for type safety
+- Simple CLI interface for quick price checks
+- Integrated authentication checks with onchainos wallet
+- Supports multiple cryptocurrency price queries
+- E2E testing capabilities for CLI workflows
 

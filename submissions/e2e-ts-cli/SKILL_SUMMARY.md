@@ -2,15 +2,17 @@
 # e2e-ts-cli -- Skill Summary
 
 ## Overview
-The e2e-ts-cli is a simple TypeScript-based command-line tool that provides echo functionality primarily designed for end-to-end testing scenarios. It serves as a lightweight utility that can be easily integrated into testing workflows to verify CLI interactions and command execution.
+This skill provides a TypeScript-based CLI tool that combines basic argument echoing functionality with cryptocurrency price querying through onchainos integration. It serves as both a utility for testing CLI workflows and a practical tool for retrieving real-time token prices, particularly focusing on Ethereum and Bitcoin-based tokens.
 
 ## Usage
-Simply run the CLI with the hello command to test the echo functionality. The tool is invoked using `e2e-ts-cli hello` which will output "hello" to demonstrate basic CLI operation.
+Install the `e2e-ts-cli` binary and ensure `onchainos` CLI is authenticated via `onchainos wallet status`. Use the tool by running commands like `e2e-ts-cli hello world` for testing or `e2e-ts-cli price ethereum <address>` for price queries.
 
 ## Commands
-| Command | Description | Output |
+| Command | Description | Example |
 |---------|-------------|---------|
-| `e2e-ts-cli hello` | Echo test command | Returns "hello" |
+| `e2e-ts-cli <args>` | Echo arguments for testing | `e2e-ts-cli hello world` |
+| `e2e-ts-cli price ethereum <address>` | Query ETH price via onchainos | `e2e-ts-cli price ethereum 0xeeee...` |
+| `onchainos market price --address <addr> --chain ethereum` | Direct WBTC price query | `onchainos market price --address "0x2260..." --chain ethereum` |
 
 ## Triggers
-An AI agent should activate this skill when conducting end-to-end tests or when needing to verify basic CLI functionality and command execution workflows.
+An AI agent should activate this skill when users need to test CLI functionality, query cryptocurrency prices (especially ETH or WBTC), or perform e2e testing of TypeScript CLI applications. It's particularly useful for price discovery and CLI workflow validation scenarios.

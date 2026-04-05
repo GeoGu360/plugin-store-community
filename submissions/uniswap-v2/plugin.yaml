@@ -1,0 +1,30 @@
+schema_version: 1
+name: uniswap-v2
+version: "0.1.0"
+description: "Swap tokens and manage liquidity on Uniswap V2 AMM (Ethereum mainnet)"
+author:
+  name: "GeoGu360"
+  github: "GeoGu360"
+category: defi-protocol
+tags:
+  - dex
+  - amm
+  - uniswap
+  - swap
+  - liquidity
+  - ethereum
+license: MIT
+
+components:
+  skill:
+    dir: skills/uniswap-v2
+
+build:
+  lang: rust
+  binary_name: uniswap-v2
+  source_repo: GeoGu360/onchainos-plugins
+  source_commit: "66953258cc4e269d51289afb9a8de5798ca8b126"
+  source_dir: uniswap-v2
+
+api_calls:
+  - "https://ethereum.publicnode.com"

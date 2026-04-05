@@ -22,7 +22,7 @@ components:
 build:
   lang: rust
   binary_name: dinero-pxeth
-  source_repo: skylavis-sky/onchainos-plugins
+  source_repo: GeoGu360/onchainos-plugins
   source_commit: "b91d3468147101eb1b94ecff90e38b159047b3d0"
   source_dir: dinero-pxeth
 

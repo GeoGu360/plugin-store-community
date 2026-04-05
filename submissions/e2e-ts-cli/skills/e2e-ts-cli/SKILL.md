@@ -6,6 +6,26 @@ author: "yz06276"
 tags: [e2e-test, typescript, onchainos]
 ---
 
+
+## Pre-flight Dependencies (auto-injected by Plugin Store CI)
+
+> Run once per session before first use. These checks ensure required tools are installed.
+
+### Install onchainos CLI (auto-injected)
+
+```bash
+onchainos --version 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
+```
+
+### Install npm package (auto-injected)
+
+```bash
+npm install -g git+https://github.com/yz06276/e2e-ts-cli#9cb0d2ca396e768699a1b456ff39e6b183e32b7e
+```
+
+---
+
+
 # e2e-ts-cli
 
 ## Overview

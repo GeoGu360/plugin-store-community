@@ -180,7 +180,8 @@ jobs:
             if [ -z "$SKILL_REPO" ] && [ -n "$SKILL_DIR" ]; then
               SRC="submissions/${PLUGIN_NAME}/${SKILL_DIR}"
               DEST="skills/${PLUGIN_NAME}"
-              if [ -d "$SRC" ] && [ ! -d "$DEST" ]; then
+              if [ -d "$SRC" ]; then
+                rm -rf "$DEST"
                 mkdir -p "$DEST"
                 cp -r "$SRC"/* "$DEST/" 2>/dev/null || true
                 echo "Mode A: Copied ${SRC}/* → ${DEST}/"

@@ -1,0 +1,30 @@
+schema_version: 1
+name: gmx-v2
+version: "0.1.0"
+description: "Trade perpetuals and manage GM pool liquidity on GMX V2 (Arbitrum/Avalanche)"
+author:
+  name: "GeoGu360"
+  github: "GeoGu360"
+category: defi-protocol
+tags:
+  - perpetual
+  - dex
+  - gmx
+  - leverage
+  - gm-pools
+license: MIT
+
+components:
+  skill:
+    dir: skills/gmx-v2
+
+build:
+  lang: rust
+  binary_name: gmx-v2
+  source_repo: GeoGu360/onchainos-plugins
+  source_commit: "ebe2d27339cbd691825faad31f0968b350a96029"
+  source_dir: gmx-v2
+
+api_calls:
+  - "https://arbitrum-api.gmxinfra.io"
+  - "https://avalanche-api.gmxinfra.io"

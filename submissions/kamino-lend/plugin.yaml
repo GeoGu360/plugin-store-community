@@ -21,7 +21,7 @@ components:
 build:
   lang: rust
   binary_name: kamino-lend
-  source_repo: skylavis-sky/onchainos-plugins
+  source_repo: GeoGu360/onchainos-plugins
   source_commit: "7a23f94ebbbca2090748570dd8c4cb11cb363f3d"
   source_dir: kamino-lend
 

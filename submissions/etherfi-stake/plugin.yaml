@@ -1,0 +1,32 @@
+schema_version: 1
+name: etherfi-stake
+version: "0.1.0"
+description: "Stake ETH with ether.fi liquid restaking protocol to receive eETH or weETH, manage withdrawals, and track restaking rewards"
+author:
+  name: "GeoGu360"
+  github: "GeoGu360"
+category: defi-protocol
+tags:
+  - staking
+  - liquid-staking
+  - restaking
+  - eth
+  - eeth
+  - weeth
+  - etherfi
+license: MIT
+
+components:
+  skill:
+    dir: skills/etherfi-stake
+
+build:
+  lang: rust
+  binary_name: etherfi-stake
+  source_repo: GeoGu360/onchainos-plugins
+  source_commit: "66953258cc4e269d51289afb9a8de5798ca8b126"
+  source_dir: etherfi-stake
+
+api_calls:
+  - "https://yields.llama.fi"
+  - "https://ethereum.publicnode.com"

@@ -1,3 +1,8 @@
+---
+name: camelot-v3
+description: Swap tokens and manage concentrated liquidity positions on Camelot V3 (Algebra V1 AMM on Arbitrum)
+---
+
 # Camelot V3 Skill
 
 Camelot V3 is Arbitrum's native concentrated liquidity DEX, built on the Algebra V1 protocol. It supports token swaps, price quotes, and LP position management on Arbitrum (chain 42161).

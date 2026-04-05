@@ -7,9 +7,39 @@
   },
   "plugins": [
     {
+      "name": "e2e-go-cli",
+      "description": "E2E test plugin: Go echo CLI",
+      "source": "./skills/e2e-go-cli"
+    },
+    {
+      "name": "e2e-node-cli",
+      "description": "E2E test plugin: Node.js echo CLI",
+      "source": "./skills/e2e-node-cli"
+    },
+    {
+      "name": "e2e-python-cli",
+      "description": "E2E test plugin: Python scripts bundled with skill",
+      "source": "./skills/e2e-python-cli"
+    },
+    {
       "name": "e2e-rust-cli",
       "description": "E2E test plugin: Rust CLI with onchainos price query",
       "source": "./skills/e2e-rust-cli"
+    },
+    {
+      "name": "e2e-skill-only",
+      "description": "E2E test plugin: pure SKILL.md with no binary or scripts",
+      "source": "./skills/e2e-skill-only"
+    },
+    {
+      "name": "e2e-stub-external",
+      "description": "E2E test: external stub from Claude marketplace format",
+      "source": "./skills/e2e-stub-external"
+    },
+    {
+      "name": "e2e-ts-cli",
+      "description": "E2E test plugin: TypeScript echo CLI",
+      "source": "./skills/e2e-ts-cli"
     },
     {
       "name": "meme-trench-scanner",

@@ -22,7 +22,7 @@ build:
   lang: rust
   binary_name: compound-v3
   source_repo: GeoGu360/onchainos-plugins
-  source_commit: "20e55b656c7614191e412582d4709f6a16068f4f"
+  source_commit: "866b8a5550e4c3f0bf74b5874ea652025ddd564c"
   source_dir: compound-v3
 
 api_calls:

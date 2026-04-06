@@ -24,7 +24,7 @@ build:
   lang: rust
   binary_name: velodrome-v2
   source_repo: GeoGu360/onchainos-plugins
-  source_commit: "6798144a38883c23cddd56640aacd52533311e32"
+  source_commit: "8ac68238c1f4a0da197fad5caa312a67869483a7"
   source_dir: velodrome-v2
 
 api_calls:

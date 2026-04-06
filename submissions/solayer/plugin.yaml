@@ -21,7 +21,7 @@ build:
   lang: rust
   binary_name: solayer
   source_repo: GeoGu360/onchainos-plugins
-  source_commit: "3049f3dce3f1e08609e80efa9fb74af08e52bfb8"
+  source_commit: "866b8a5550e4c3f0bf74b5874ea652025ddd564c"
   source_dir: solayer
 
 api_calls:

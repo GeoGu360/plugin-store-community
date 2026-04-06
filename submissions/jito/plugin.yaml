@@ -22,7 +22,7 @@ build:
   lang: rust
   binary_name: jito
   source_repo: skylavis-sky/onchainos-plugins
-  source_commit: "05b1baad38e895f2908de014281fd69578a09eef"
+  source_commit: "866b8a5550e4c3f0bf74b5874ea652025ddd564c"
   source_dir: jito
 
 api_calls:

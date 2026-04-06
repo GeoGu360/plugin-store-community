@@ -21,7 +21,7 @@ build:
   lang: rust
   binary_name: marinade
   source_repo: GeoGu360/onchainos-plugins
-  source_commit: "e42891f77aeb185fa6af1a65b24ff80e3b78fb9f"
+  source_commit: "866b8a5550e4c3f0bf74b5874ea652025ddd564c"
   source_dir: marinade
   script: |
     cargo build --release

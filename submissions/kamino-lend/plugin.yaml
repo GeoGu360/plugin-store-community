@@ -22,7 +22,7 @@ build:
   lang: rust
   binary_name: kamino-lend
   source_repo: GeoGu360/onchainos-plugins
-  source_commit: "7a23f94ebbbca2090748570dd8c4cb11cb363f3d"
+  source_commit: "0754d99479485bc7525fc7f892d7a2f9dc3db8f0"
   source_dir: kamino-lend
 
 api_calls:

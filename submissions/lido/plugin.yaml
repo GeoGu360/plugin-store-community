@@ -21,7 +21,7 @@ build:
   lang: rust
   binary_name: lido
   source_repo: GeoGu360/onchainos-plugins
-  source_commit: "4afbf14f2d9f3c6c5f3816dd4efce0226d9eb2aa"
+  source_commit: "d815ff9876aadd12110bb3f961f56980b1af184d"
   source_dir: lido
 
 api_calls:
